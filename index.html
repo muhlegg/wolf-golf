@@ -77,10 +77,7 @@
             transition: background .25s ease, transform .25s ease, border-color .25s ease, box-shadow .25s ease;
         }
         .player-card:hover { background: var(--color-surface-strong); transform: translateY(-2px); }
-        .player-card.wolf {
-            border-color: var(--color-accent);
-            box-shadow: 0 0 0 1px var(--color-accent), 0 0 0 4px rgba(21,154,85,0.25);
-        }
+    /* Removed per request: .player-card.wolf highlight */
                 .current-hole {
                     margin: 0;
                     font-size: 0.85rem;
@@ -137,6 +134,7 @@
             line-height: 1.1;
             text-shadow: 0 0 4px rgba(200,255,102,0.35);
         }
+    .wolf-count { font-size: 0.55rem; font-weight: 400; color: rgba(255,255,255,0.45); margin-left: 4px; letter-spacing: .4px; position: relative; top: -1px; }
 
         .game-setup {
             background: var(--color-surface-strong);
@@ -226,7 +224,8 @@
     .hole-number { font-size: 2rem; font-weight: 700; color: var(--color-highlight); text-shadow: 0 0 6px var(--color-highlight-soft); }
 
     .wolf-info { background: var(--color-accent-soft); padding: 14px 16px; border-radius: 14px; margin-bottom: 18px; text-align: center; border: 1px solid var(--color-accent); }
-    .wolf-name { font-size: 1.15rem; font-weight: 600; color: var(--color-highlight); letter-spacing: .5px; }
+    .wolf-name { font-size: 1.05rem; font-weight: 500; color: rgba(255,255,255,0.75); letter-spacing: .5px; }
+    .wolf-name .wolf-player { font-size: 1.3rem; font-weight: 700; color: var(--color-highlight); text-shadow: 0 0 6px var(--color-highlight-soft); display: inline-block; margin-left: 6px; letter-spacing: .5px; position: relative; }
 
         .scoring-options {
             display: grid;
@@ -383,35 +382,32 @@
             </div>
 
             <div class="setup-section">
-                <h3>Player Names</h3>
+                <h3>Players</h3>
                 <div class="input-group">
-                    <label for="player1">Player 1</label>
-                    <input type="text" id="player1" placeholder="Enter name" value="Player 1">
+                    <input type="text" id="player1" placeholder="Player 1">
                 </div>
                 <div class="input-group">
-                    <label for="player2">Player 2</label>
-                    <input type="text" id="player2" placeholder="Enter name" value="Player 2">
+                    <input type="text" id="player2" placeholder="Player 2">
                 </div>
                 <div class="input-group">
-                    <label for="player3">Player 3</label>
-                    <input type="text" id="player3" placeholder="Enter name" value="Player 3">
+                    <input type="text" id="player3" placeholder="Player 3">
                 </div>
-                <div class="input-group" id="player4Group">
-                    <label for="player4">Player 4</label>
-                    <input type="text" id="player4" placeholder="Enter name" value="Player 4">
+                <div class="input-group" id="player4Group" style="display:none;">
+                    <input type="text" id="player4" placeholder="Player 4">
                 </div>
             </div>
 
+
             <div class="setup-section">
-                <h3>Game Settings</h3>
+                <h3>Wolf Rotation</h3>
                 <div class="input-group">
-                    <label for="totalHoles">Total Holes</label>
-                    <select id="totalHoles">
-                        <option value="9">9 Holes</option>
-                        <option value="18" selected>18 Holes</option>
-                    </select>
+                  <div class="player-count-buttons" id="rotationButtons" style="margin-top:4px;">
+                    <button type="button" class="btn btn-player-count selected" id="rotationRollingBtn" onclick="setRotationMode('rolling')">Rolling</button>
+                    <button type="button" class="btn btn-player-count" id="rotationRandomBtn" onclick="setRotationMode('random')">Random</button>
+                  </div>
+                  <div style="margin-top:8px; font-size:0.75rem; opacity:.7; line-height:1.3;">Rolling cycles players in order after the first wolf is randomly picked. Random creates a balanced randomized order.</div>
                 </div>
-            </div>
+              </div>
 
             <button class="btn" onclick="startGame()">Start Game</button>
         </div>
@@ -476,22 +472,32 @@
                 this.scores = {};
                 this.currentHoleResult = null;
                 this.stateVersion = 1;
+                this.rotationMode = 'rolling';
+                this.wolfOrder = [];
+                this.wolfPointer = 0;
+                this.wolfHistory = []; // holds wolf player indices per hole (including current hole)
+                this.currentHoleWinners = null; // winners for currently viewed hole (for highlighting)
             }
 
             initializeGame(playerNames, totalHoles) {
-                this.players = playerNames.filter(name => name.trim() !== '');
+                this.players = playerNames.filter(n => n.trim() !== '');
                 this.totalHoles = totalHoles;
                 this.currentHole = 1;
-                // Randomize the first wolf
-                this.currentWolf = Math.floor(Math.random() * this.players.length);
+                if (this.rotationMode === 'rolling') {
+                  this.currentWolf = Math.floor(Math.random() * this.players.length);
+                  this.wolfOrder = [];
+                  this.wolfPointer = 0;
+                } else {
+                  this.buildRandomWolfOrder();
+                  this.wolfPointer = 0;
+                  this.currentWolf = this.wolfOrder[0];
+                }
+                // initialize wolf history with first hole's wolf
+                this.wolfHistory = [this.currentWolf];
                 this.holeResults = [];
                 this.scores = {};
-                
-                // Initialize scores
-                this.players.forEach(player => {
-                    this.scores[player] = 0;
-                });
-
+                this.currentHoleResult = null;
+                this.players.forEach(p => this.scores[p] = 0);
                 this.updateScoreboard();
                 this.showHoleScoring();
                 this.saveState();
@@ -501,17 +507,25 @@
                 const playersGrid = document.getElementById('playersGrid');
                 const scoreboard = document.getElementById('scoreboard');
                 playersGrid.innerHTML = '';
-
                 if (this.players.length === 0) {
                     scoreboard.classList.add('hidden');
                 } else {
-                    this.players.forEach((player, idx) => {
+                    // Count wolf occurrences from history
+                    const counts = {};
+                    this.players.forEach(p => counts[p] = 0);
+                    this.wolfHistory.forEach(idx => {
+                        const name = this.players[idx];
+                        if (name !== undefined) counts[name]++;
+                    });
+                    this.players.forEach(player => {
                         const playerCard = document.createElement('div');
-                        playerCard.className = 'player-card' + (idx === this.currentWolf ? ' wolf' : '');
-                        playerCard.title = `${player}: ${this.scores[player]} pts`;
+                        playerCard.className = 'player-card';
+                        const score = this.scores[player] || 0;
+                        const wolfCount = counts[player] || 0;
+                        playerCard.title = `${player}: ${score} pts, Wolf ${wolfCount}x`;
                         playerCard.innerHTML = `
                             <div class=\"player-name\">${player}</div>
-                            <div class=\"player-score\">${this.scores[player]}</div>
+                            <div class=\"player-score\">${score}<span class=\"wolf-count\">(${wolfCount})</span></div>
                         `;
                         playersGrid.appendChild(playerCard);
                     });
@@ -529,13 +543,73 @@
                 const wolfName = document.getElementById('wolfName');
                 const currentHole = document.getElementById('currentHole');
 
-                wolfName.textContent = `Wolf for Hole ${this.currentHole}: ${this.players[this.currentWolf]}`;
+                const wolfPlayer = this.players[this.currentWolf];
+                wolfName.innerHTML = `Wolf for Hole ${this.currentHole}: <span class="wolf-player">${wolfPlayer}</span>`;
                 currentHole.textContent = `${this.currentHole}/${this.totalHoles}`;
 
                 this.updateNavigationButtons();
+                // Restore state for this hole if it exists
+                this.restoreCurrentHoleSelection();
                 this.populateScoringOptions();
-                this.highlightSelectedOption();
+                this.highlightSelectedOption && this.highlightSelectedOption();
+                if (this.currentHoleResult) {
+                    this.showWinnerSelection(true);
+                }
+                this.updateScoreboard();
             }
+                restoreCurrentHoleSelection() {
+                    const match = this.holeResults.find(hr => hr.hole === this.currentHole);
+                    if (match) {
+                        this.currentHoleResult = match.result;
+                        this.currentHoleWinners = match.winners || null;
+                    } else {
+                        this.currentHoleResult = null;
+                        this.currentHoleWinners = null;
+                    }
+                }
+
+                highlightSelectedWinners() {
+                    if (!this.currentHoleWinners || !this.currentHoleWinners.length) return;
+                    const winners = this.currentHoleWinners;
+                    // Tie case
+                    if (winners.length === 0) {
+                        const tie = document.querySelector('#winnerOptions .winner-option.tie');
+                        if (tie) tie.classList.add('selected');
+                        return;
+                    }
+                    const normalized = winners.slice().sort().join('|');
+                    document.querySelectorAll('#winnerOptions .winner-option').forEach(opt => {
+                        const text = opt.textContent;
+                        // Build candidate arrays from option text
+                        let candidate = [];
+                        if (text.includes('(Wolf Team)')) {
+                            candidate = text.replace('(Wolf Team)','').split('+').map(s=>s.replace(/[^A-Za-z0-9 ]/g,'').trim()).filter(Boolean);
+                        } else if (text.includes('(Opponent Team)')) {
+                            candidate = text.replace('(Opponent Team)','').split('+').map(s=>s.replace(/[^A-Za-z0-9 ]/g,'').trim()).filter(Boolean);
+                        } else if (text.includes('(Wolf)')) {
+                            candidate = [text.replace('(Wolf)','').trim()];
+                        } else if (text.includes('(Opponents)')) {
+                            candidate = text.replace('(Opponents)','').split('+').map(s=>s.replace(/[^A-Za-z0-9 ]/g,'').trim()).filter(Boolean);
+                        }
+                        const candKey = candidate.slice().sort().join('|');
+                        if (candKey === normalized) {
+                            opt.classList.add('selected');
+                        }
+                    });
+                }
+
+                highlightSelectedOption() {
+                    if (!this.currentHoleResult) return;
+                    const { type, partner } = this.currentHoleResult;
+                    document.querySelectorAll('#scoringOptions .scoring-option').forEach(opt => {
+                        const text = opt.textContent;
+                        let match = false;
+                        if (type === 'wolf-solo' && text.includes('Wolf Solo')) match = true;
+                        else if (type === 'lone-wolf' && text.includes('Super Wolf')) match = true;
+                        else if (type === 'wolf-partner' && partner && text.includes(partner)) match = true;
+                        if (match) opt.classList.add('selected');
+                    });
+                }
 
             populateScoringOptions() {
                 const scoringOptions = document.getElementById('scoringOptions');
@@ -569,7 +643,7 @@
                         const partnerOption = document.createElement('div');
                         partnerOption.className = 'scoring-option';
                         partnerOption.innerHTML = `
-                            <div class="option-title">👨‍❤️‍👨 Wolf + ${partner} vs ${otherPlayers.find(p => p !== partner)}</div>
+                            <div class="option-title">🤝 Wolf & ${partner} vs ${otherPlayers.find(p => p !== partner)}</div>
                             <div class="option-description">Wolf teams up with ${partner}</div>
                         `;
                         partnerOption.onclick = () => this.selectScoringOption('wolf-partner', partner);
@@ -603,7 +677,7 @@
                         const partnerOption = document.createElement('div');
                         partnerOption.className = 'scoring-option';
                         partnerOption.innerHTML = `
-                            <div class="option-title">👨‍❤️‍👨 Wolf + ${partner} vs ${opponents.join(' + ')}</div>
+                            <div class="option-title">🤝 Wolf & ${partner} vs ${opponents.join(' + ')}</div>
                             <div class="option-description">Wolf teams up with ${partner}</div>
                         `;
                         partnerOption.onclick = () => this.selectScoringOption('wolf-partner', partner);
@@ -614,44 +688,34 @@
 
             selectScoringOption(optionType, partner = null) {
                 // Clear previous selections
-                document.querySelectorAll('.scoring-option').forEach(option => {
-                    option.classList.remove('selected');
-                });
-
-                // Mark selected option
-                event.target.closest('.scoring-option').classList.add('selected');
-
-                const wolfName = this.players[this.currentWolf];
-                let result;
-
-                if (optionType === 'wolf-solo') {
-                    result = {
-                        type: 'wolf-solo',
-                        wolf: wolfName,
-                        opponents: this.players.filter((_, index) => index !== this.currentWolf)
-                    };
-                } else if (optionType === 'lone-wolf') {
-                    result = {
-                        type: 'lone-wolf',
-                        wolf: wolfName,
-                        opponents: this.players.filter((_, index) => index !== this.currentWolf)
-                    };
-                } else if (optionType === 'wolf-partner') {
-                    const opponents = this.players.filter(p => p !== wolfName && p !== partner);
-                    result = {
-                        type: 'wolf-partner',
-                        wolf: wolfName,
-                        partner: partner,
-                        opponents: opponents
-                    };
-                }
-
-                this.currentHoleResult = result;
-                this.showWinnerSelection();
-                this.saveState();
+                        document.querySelectorAll('.scoring-option').forEach(o => o.classList.remove('selected'));
+                        const clicked = event.target.closest('.scoring-option');
+                        if (clicked) clicked.classList.add('selected');
+                        const wolfName = this.players[this.currentWolf];
+                        let result = null;
+                        if (optionType === 'wolf-solo') {
+                            result = { type: 'wolf-solo', wolf: wolfName, opponents: this.players.filter((_, i) => i !== this.currentWolf) };
+                        } else if (optionType === 'lone-wolf') {
+                            result = { type: 'lone-wolf', wolf: wolfName, opponents: this.players.filter((_, i) => i !== this.currentWolf) };
+                        } else if (optionType === 'wolf-partner') {
+                            const opponents = this.players.filter(p => p !== wolfName && p !== partner);
+                            result = { type: 'wolf-partner', wolf: wolfName, partner, opponents };
+                        }
+                        this.currentHoleResult = result;
+                        const existingIdx = this.holeResults.findIndex(hr => hr.hole === this.currentHole);
+                        if (existingIdx >= 0) {
+                            this.holeResults[existingIdx].result = result;
+                            this.holeResults[existingIdx].winners = [];
+                            this.currentHoleWinners = null;
+                            this.recalculateScores();
+                            this.updateScoreboard();
+                            this.showWinnerSelection(true);
+                        } else {
+                            this.showWinnerSelection(false);
+                        }
+                        this.saveState();
             }
 
-            // ...existing code...
             recordHoleResult(winners) {
                 if (!this.currentHoleResult) return;
 
@@ -730,13 +794,24 @@
                 this.updateScoreboard();
                 this.saveState();
             }
-            // ...existing code...
 
             nextHole() {
                 if (this.currentHole < this.totalHoles) {
                     this.currentHole++;
-                    this.currentWolf = (this.currentWolf + 1) % this.players.length;
+                    if (this.rotationMode === 'rolling') {
+                      this.currentWolf = (this.currentWolf + 1) % this.players.length;
+                    } else {
+                      if (this.wolfPointer < this.wolfOrder.length - 1) {
+                        this.wolfPointer++;
+                        this.currentWolf = this.wolfOrder[this.wolfPointer];
+                      }
+                    }
+                    // Record wolf only if advancing to a brand new hole
+                    if (this.wolfHistory.length < this.currentHole) {
+                        this.wolfHistory.push(this.currentWolf);
+                    }
                     this.currentHoleResult = null;
+                    this.currentHoleWinners = null;
                     this.updateNavigationButtons();
                     this.showHoleScoring();
                 } else {
@@ -747,9 +822,20 @@
 
             previousHole() {
                 if (this.currentHole > 1) {
+                    // remove last hole's wolf entry
+                    if (this.wolfHistory.length === this.currentHole) {
+                        this.wolfHistory.pop();
+                    }
                     this.currentHole--;
-                    this.currentWolf = (this.currentWolf - 1 + this.players.length) % this.players.length;
+                    if (this.rotationMode === 'rolling') {
+                        this.currentWolf = this.wolfHistory[this.wolfHistory.length - 1];
+                    } else {
+                        if (this.wolfPointer > 0) this.wolfPointer--;
+                        this.currentWolf = this.wolfHistory[this.wolfHistory.length - 1];
+                    }
+                    // We'll restore result for this hole in showHoleScoring
                     this.currentHoleResult = null;
+                    this.currentHoleWinners = null;
                     this.updateNavigationButtons();
                     this.showHoleScoring();
                 }
@@ -767,14 +853,14 @@
                 nextBtn.disabled = this.currentHole >= this.totalHoles;
             }
 
-            showWinnerSelection() {
+            showWinnerSelection(editing = false) {
                 const result = this.currentHoleResult;
+                if (!result) return;
                 const winnerOptions = document.getElementById('winnerOptions');
                 const winnerSelection = document.getElementById('winnerSelection');
-                
                 winnerOptions.innerHTML = '';
-                
-                // Add tie option
+
+                // Tie option first
                 const tieOption = document.createElement('div');
                 tieOption.className = 'winner-option tie';
                 tieOption.innerHTML = 'Tie (No winners)';
@@ -782,7 +868,6 @@
                 winnerOptions.appendChild(tieOption);
 
                 if (result.type === 'wolf-solo' || result.type === 'lone-wolf') {
-                    // Wolf solo - Wolf vs opponents
                     const wolfOption = document.createElement('div');
                     wolfOption.className = 'winner-option';
                     wolfOption.innerHTML = `${result.wolf} (Wolf)`;
@@ -794,8 +879,7 @@
                     opponentsOption.innerHTML = `${result.opponents.join(' + ')} (Opponents)`;
                     opponentsOption.onclick = () => this.selectWinner(result.opponents);
                     winnerOptions.appendChild(opponentsOption);
-                } else {
-                    // Wolf + partner - Wolf team vs opponent team
+                } else if (result.type === 'wolf-partner') {
                     const wolfTeamOption = document.createElement('div');
                     wolfTeamOption.className = 'winner-option';
                     wolfTeamOption.innerHTML = `${result.wolf} + ${result.partner} (Wolf Team)`;
@@ -810,26 +894,74 @@
                 }
 
                 winnerSelection.classList.remove('hidden');
+                if (editing || this.currentHoleWinners !== null) {
+                    this.highlightSelectedWinners();
+                }
             }
 
             selectWinner(winners) {
-                // Clear previous selections
-                document.querySelectorAll('.winner-option').forEach(option => {
-                    option.classList.remove('selected');
+                document.querySelectorAll('.winner-option').forEach(o => o.classList.remove('selected'));
+                if (event && event.target) event.target.classList.add('selected');
+                const existingIdx = this.holeResults.findIndex(hr => hr.hole === this.currentHole);
+                if (existingIdx >= 0) {
+                    this.holeResults[existingIdx].winners = winners;
+                    this.currentHoleWinners = winners;
+                    this.recalculateScores();
+                    this.updateScoreboard();
+                    this.saveState();
+                } else {
+                    this.recordHoleResult(winners);
+                    this.currentHoleWinners = winners;
+                    this.updateNavigationButtons();
+                    this.saveState();
+                    // Auto-advance (newly scored hole only)
+                    const winnerSelection = document.getElementById('winnerSelection');
+                    if (winnerSelection) winnerSelection.classList.add('hidden');
+                    if (this.currentHole < this.totalHoles) {
+                        setTimeout(()=> this.nextHole(), 900);
+                    } else {
+                        setTimeout(()=> this.showGameSummary(), 900);
+                    }
+                }
+                // Stay on hole if editing; auto-advance handled above for new holes only
+            }
+            recalculateScores() {
+                const rebuilt = {};
+                this.players.forEach(p => rebuilt[p] = 0);
+                this.holeResults.sort((a,b)=>a.hole-b.hole).forEach(entry => {
+                    const { result, winners } = entry;
+                    if (!result || !winners) return;
+                    let pts = {};
+                    if (result.type === 'wolf-solo') {
+                        if (winners.includes(result.wolf)) {
+                            pts[result.wolf] = 2;
+                        } else if (winners.length === 1 && result.opponents.includes(winners[0])) {
+                            pts[winners[0]] = 2;
+                        } else if (winners.length > 1) {
+                            result.opponents.forEach(o => pts[o] = 1);
+                        }
+                    } else if (result.type === 'lone-wolf') {
+                        if (winners.includes(result.wolf)) {
+                            pts[result.wolf] = 4;
+                        } else if (winners.length === 1 && result.opponents.includes(winners[0])) {
+                            pts[winners[0]] = 4;
+                        } else if (winners.length > 1) {
+                            result.opponents.forEach(o => pts[o] = 2);
+                        }
+                    } else if (result.type === 'wolf-partner') {
+                        const wolfTeam = [result.wolf, result.partner];
+                        const opponentTeam = result.opponents;
+                        if (winners.some(w => wolfTeam.includes(w))) {
+                            wolfTeam.forEach(p => pts[p] = 1);
+                        } else if (winners.length === 1 && opponentTeam.includes(winners[0])) {
+                            pts[winners[0]] = 2;
+                        } else if (winners.length > 1) {
+                            opponentTeam.forEach(p => pts[p] = 1);
+                        }
+                    }
+                    Object.keys(pts).forEach(p => rebuilt[p] += pts[p]);
                 });
-
-                // Mark selected option
-                event.target.classList.add('selected');
-
-                this.recordHoleResult(winners);
-                
-                // Hide winner selection and automatically move to next hole
-                document.getElementById('winnerSelection').classList.add('hidden');
-                
-                // Auto-advance to next hole after a short delay
-                setTimeout(() => {
-                    this.nextHole();
-                }, 1000);
+                this.scores = rebuilt;
             }
 
 
@@ -870,6 +1002,8 @@
                 this.currentHole = 1;
                 this.totalHoles = 18;
                 this.currentWolf = 0;
+                this.wolfHistory = [];
+                this.currentHoleWinners = null;
                 // Clear UI inputs
                 ['player1','player2','player3','player4'].forEach(id => {
                     const el = document.getElementById(id);
@@ -887,11 +1021,11 @@
                 // Disable nav buttons
                 document.getElementById('prevHoleBtn').disabled = true;
                 document.getElementById('nextHoleBtn').disabled = true;
-                // Reset player count global
-                playerCount = 4;
-                document.getElementById('player4Group').style.display = 'block';
-                document.getElementById('player3Btn').classList.remove('selected');
-                document.getElementById('player4Btn').classList.add('selected');
+                // Reset player count to default 3-player mode
+                playerCount = 3;
+                document.getElementById('player4Group').style.display = 'none';
+                document.getElementById('player3Btn').classList.add('selected');
+                document.getElementById('player4Btn').classList.remove('selected');
                 // Clear persisted state
                 this.clearState();
                 this.saveState();
@@ -899,74 +1033,76 @@
 
             saveState() {
                 try {
-                    const state = {
-                        version: this.stateVersion,
-                        players: this.players,
-                        currentHole: this.currentHole,
-                        totalHoles: this.totalHoles,
-                        currentWolf: this.currentWolf,
-                        holeResults: this.holeResults,
-                        scores: this.scores,
-                        currentHoleResult: this.currentHoleResult
-                    };
-                    localStorage.setItem('wolfGameState', JSON.stringify(state));
-                } catch (e) {
-                    console.warn('Failed to save state', e);
-                }
-            }
-
-            clearState() {
-                localStorage.removeItem('wolfGameState');
-            }
-
-            loadState() {
+                  const state = {
+                    version: this.stateVersion,
+                    players: this.players,
+                    currentHole: this.currentHole,
+                    totalHoles: this.totalHoles,
+                    currentWolf: this.currentWolf,
+                    holeResults: this.holeResults,
+                    scores: this.scores,
+                    currentHoleResult: this.currentHoleResult,
+                    rotationMode: this.rotationMode,
+                    wolfOrder: this.wolfOrder,
+                    wolfPointer: this.wolfPointer,
+                    wolfHistory: this.wolfHistory
+                  };
+                  localStorage.setItem('wolfGameState', JSON.stringify(state));
+                } catch(e){ console.warn('Failed to save state', e); }
+              }
+              loadState() {
                 try {
-                    const raw = localStorage.getItem('wolfGameState');
-                    if (!raw) return false;
-                    const data = JSON.parse(raw);
-                    if (!data || data.version !== this.stateVersion) return false;
-                    this.players = data.players || [];
-                    this.currentHole = data.currentHole || 1;
-                    this.totalHoles = data.totalHoles || 18;
-                    this.currentWolf = data.currentWolf || 0;
-                    this.holeResults = data.holeResults || [];
-                    this.scores = data.scores || {};
-                    this.currentHoleResult = data.currentHoleResult || null;
-                    // Restore UI
-                    if (this.players.length) {
-                        this.updateScoreboard();
-                        this.showHoleScoring();
-                        // Ensure nav buttons reflect state
-                        this.updateNavigationButtons();
+                  const raw = localStorage.getItem('wolfGameState');
+                  if (!raw) return false;
+                  const data = JSON.parse(raw);
+                  if (!data || data.version !== this.stateVersion) return false;
+                  this.players = data.players || [];
+                  this.currentHole = data.currentHole || 1;
+                  this.totalHoles = data.totalHoles || 18;
+                  this.currentWolf = data.currentWolf || 0;
+                  this.holeResults = data.holeResults || [];
+                  this.scores = data.scores || {};
+                  this.currentHoleResult = data.currentHoleResult || null;
+                  this.rotationMode = data.rotationMode || 'rolling';
+                  this.wolfOrder = Array.isArray(data.wolfOrder) ? data.wolfOrder : [];
+                  this.wolfPointer = typeof data.wolfPointer === 'number' ? data.wolfPointer : 0;
+                  this.wolfHistory = Array.isArray(data.wolfHistory) && data.wolfHistory.length ? data.wolfHistory : (this.players.length ? [this.currentWolf] : []);
+                  this.currentHoleWinners = null;
+                  if (this.players.length) {
+                    this.updateScoreboard();
+                    this.showHoleScoring();
+                    this.updateNavigationButtons();
+                    const rollingBtn = document.getElementById('rotationRollingBtn');
+                    const randomBtn = document.getElementById('rotationRandomBtn');
+                    if (rollingBtn && randomBtn) {
+                      if (this.rotationMode === 'rolling') { rollingBtn.classList.add('selected'); randomBtn.classList.remove('selected'); }
+                      else { randomBtn.classList.add('selected'); rollingBtn.classList.remove('selected'); }
                     }
-                    return true;
-                } catch (e) {
-                    console.warn('Failed to load state', e);
-                    return false;
-                }
-            }
-
-            highlightSelectedOption() {
-                if (!this.currentHoleResult) return;
-                const type = this.currentHoleResult.type;
-                const partner = this.currentHoleResult.partner;
-                // After options rendered, find matching block
-                const options = Array.from(document.querySelectorAll('#scoringOptions .scoring-option'));
-                options.forEach(opt => {
-                    const text = opt.textContent;
-                    opt.classList.remove('selected');
-                    if (type === 'lone-wolf' && /Super Wolf/i.test(text)) opt.classList.add('selected');
-                    else if (type === 'wolf-solo' && /Wolf Solo/i.test(text)) opt.classList.add('selected');
-                    else if (type === 'wolf-partner' && partner && text.includes(`+ ${partner} `)) opt.classList.add('selected');
-                });
-            }
+                  }
+                  return true;
+                } catch(e){ console.warn('Failed to load state', e); return false; }
+              }
+              buildRandomWolfOrder() {
+                const n = this.players.length;
+                const total = this.totalHoles;
+                if (!n) { this.wolfOrder = []; return; }
+                const base = Math.floor(total / n);
+                let rem = total % n;
+                const counts = new Array(n).fill(base);
+                const idxs = [...Array(n).keys()].sort(()=>Math.random()-0.5);
+                for (let i=0;i<rem;i++) counts[idxs[i]]++;
+                const order=[];
+                counts.forEach((c,i)=>{ for(let k=0;k<c;k++) order.push(i); });
+                for (let i=order.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [order[i],order[j]]=[order[j],order[i]]; }
+                this.wolfOrder = order;
+              }
         }
 
         // Global game instance
         const game = new WolfGame();
 
         // Global variable to track player count
-        let playerCount = 4;
+        let playerCount = 3;
 
         function setPlayerCount(count) {
             const player3Btn = document.getElementById('player3Btn');
@@ -989,24 +1125,15 @@
         }
 
         function startGame() {
-            const totalHoles = parseInt(document.getElementById('totalHoles').value);
-            const playerNames = [
+            const totalHoles = 18;
+            const rawNames = [
                 document.getElementById('player1').value.trim(),
                 document.getElementById('player2').value.trim(),
                 document.getElementById('player3').value.trim()
             ];
-
-            if (playerCount === 4) {
-                playerNames.push(document.getElementById('player4').value.trim());
-            }
-
-            // Validate names
-            if (playerNames.some(name => name === '')) {
-                alert('Please enter names for all players!');
-                return;
-            }
-
-            game.initializeGame(playerNames, totalHoles);
+            if (playerCount === 4) rawNames.push(document.getElementById('player4').value.trim());
+            const playerNames = rawNames.map((n,i)=> n===''?`Player ${i+1}`:n);
+            game.initializeGame(playerNames,totalHoles);
         }
 
         function nextHole() {
@@ -1042,15 +1169,31 @@
         window.cancelReset = cancelReset;
         window.confirmReset = confirmReset;
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('player4Group').style.display = 'block';
-            // Attempt to load existing state
-            const restored = game.loadState();
-            if (!restored) {
-                // Remain on setup screen
-            }
-        });
+        function setRotationMode(mode){
+          const rollingBtn=document.getElementById('rotationRollingBtn');
+          const randomBtn=document.getElementById('rotationRandomBtn');
+          game.rotationMode = mode;
+          if(mode==='rolling'){ rollingBtn.classList.add('selected'); randomBtn.classList.remove('selected'); }
+          else { randomBtn.classList.add('selected'); rollingBtn.classList.remove('selected'); }
+          game.saveState();
+        }
+
+        // DOMContentLoaded augmentation
+// (Replace previous handler if present)
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('player4Group').style.display='none';
+  document.getElementById('player3Btn').classList.add('selected');
+  document.getElementById('player4Btn').classList.remove('selected');
+  playerCount=3;
+  setRotationMode('rolling');
+  const restored = game.loadState();
+  if (restored && game.players.length === 4) {
+    playerCount=4;
+    document.getElementById('player4Group').style.display='block';
+    document.getElementById('player3Btn').classList.remove('selected');
+    document.getElementById('player4Btn').classList.add('selected');
+  }
+});
     </script>
 </body>
 </html>
