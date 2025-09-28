@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wolf Golf Scorer</title>
+    <style>
+        :root {
+            --color-bg: #06130c;
+            --color-bg-alt: #0d1f16;
+            --color-surface: rgba(255,255,255,0.05);
+            --color-surface-alt: rgba(255,255,255,0.09);
+            --color-surface-strong: rgba(255,255,255,0.14);
+            --color-accent: #159a55;
+            --color-accent-hover: #118447;
+            --color-accent-active: #0d6d3a;
+            --color-accent-soft: rgba(21,154,85,0.20);
+            --color-highlight: #c8ff66;
+            --color-highlight-soft: rgba(200,255,102,0.28);
+            --color-danger: #c84747;
+            --color-danger-hover: #ac3838;
+            --gradient: radial-gradient(circle at 25% 20%, #133b25 0%, #06130c 70%);
+            --focus-ring: 0 0 0 2px rgba(200,255,102,0.55), 0 0 0 4px rgba(21,154,85,0.45);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--gradient);
+            color: #f2f9f4;
+            min-height: 100vh;
+            padding: 0;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 0 10px 10px; /* restore spacing for main content only */
+        }
+
+        .header {
+            text-align: left;
+            margin-bottom: 12px;
+            padding: 6px 15px;
+            background: rgba(0,0,0,0.38);
+            border-radius: 0;
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            margin-left: -10px;
+            margin-right: -10px;
+            width: calc(100% + 20px);
+        }
+    .header-bar { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+    .header h1 { font-size: 1.35rem; font-weight: 600; letter-spacing: 1px; margin: 0; color: var(--color-accent); opacity: 0.85; text-shadow: 0 0 6px rgba(21,154,85,0.25); }
+        .player-card {
+            background: var(--color-surface-alt);
+            padding: 4px 10px;
+            border-radius: 20px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            flex: 1 1 0;
+            min-width: 0;
+            border: 1px solid transparent;
+            transition: background .25s ease, transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+        }
+        .player-card:hover { background: var(--color-surface-strong); transform: translateY(-2px); }
+        .player-card.wolf {
+            border-color: var(--color-accent);
+            box-shadow: 0 0 0 1px var(--color-accent), 0 0 0 4px rgba(21,154,85,0.25);
+        }
+                .current-hole {
+                    margin: 0;
+                    font-size: 0.85rem;
+                    font-weight: 600;
+                    opacity: 0.7;
+                    min-width: 54px;
+                    text-align: right;
+                    font-variant-numeric: tabular-nums;
+                    letter-spacing: .5px;
+                    padding-top: 2px;
+                }
+
+        .scoreboard {
+            background: var(--color-surface-alt);
+            border-radius: 999px;
+            padding: 4px 8px;
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: stretch;
+            gap: 6px;
+            overflow-x: auto;
+            width: 100%;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .scoreboard::-webkit-scrollbar { display: none; }
+
+
+        .players-grid {
+            display: flex;
+            gap: 6px;
+            flex: 1;
+            min-width: 0;
+        }
+
+    /* removed duplicate legacy .player-card block */
+
+        .player-name {
+            font-weight: 600;
+            margin-bottom: 0;
+            font-size: 0.65rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            opacity: 0.85;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .player-score {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--color-highlight);
+            line-height: 1.1;
+            text-shadow: 0 0 4px rgba(200,255,102,0.35);
+        }
+
+        .game-setup {
+            background: var(--color-surface-strong);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .setup-section {
+            margin-bottom: 20px;
+        }
+
+        .setup-section h3 {
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+        }
+
+        .btn {
+            background: var(--color-accent);
+            color: #fff;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            letter-spacing: .5px;
+            cursor: pointer;
+            width: 100%;
+            margin: 5px 0;
+            transition: background .25s ease, transform .25s ease, box-shadow .25s ease;
+        }
+        .btn:hover { background: var(--color-accent-hover); transform: translateY(-2px); }
+        .btn:active { background: var(--color-accent-active); transform: translateY(0); }
+        .btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+    .btn-secondary { background: var(--color-surface-alt); }
+    .btn-secondary:hover { background: var(--color-surface-strong); }
+
+        .player-count-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .btn-player-count {
+            background: var(--color-surface-alt);
+            font-size: 1.05rem;
+            font-weight: 600;
+            padding: 12px 20px;
+            min-width: 60px;
+            border: 2px solid transparent;
+            border-radius: 14px;
+            transition: background .25s ease, border-color .25s ease;
+        }
+        .btn-player-count:hover { background: var(--color-surface-strong); }
+        .btn-player-count.selected { background: var(--color-accent); border-color: var(--color-highlight); color: #fff; }
+        .btn-player-count.selected:hover { background: var(--color-accent-hover); }
+
+    .hole-scoring { background: var(--color-surface-strong); border-radius: 15px; padding: 20px; margin-bottom: 20px; backdrop-filter: blur(10px); }
+
+        .hole-info {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+    .hole-number { font-size: 2rem; font-weight: 700; color: var(--color-highlight); text-shadow: 0 0 6px var(--color-highlight-soft); }
+
+    .wolf-info { background: var(--color-accent-soft); padding: 14px 16px; border-radius: 14px; margin-bottom: 18px; text-align: center; border: 1px solid var(--color-accent); }
+    .wolf-name { font-size: 1.15rem; font-weight: 600; color: var(--color-highlight); letter-spacing: .5px; }
+
+        .scoring-options {
+            display: grid;
+            gap: 10px;
+        }
+
+    .scoring-option { background: var(--color-surface); padding: 14px 16px; border-radius: 12px; cursor: pointer; transition: background .25s ease, border-color .25s ease, transform .25s ease; border: 2px solid transparent; }
+    .scoring-option:hover { background: var(--color-surface-alt); border-color: var(--color-highlight); }
+    .scoring-option.selected { background: var(--color-highlight-soft); border-color: var(--color-highlight); }
+    .scoring-option:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+        .option-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .option-description {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+
+
+
+    .winner-selection { background: var(--color-surface-alt); border-radius: 12px; padding: 16px; margin: 18px 0; }
+
+        .winner-selection h3 {
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .winner-options {
+            display: grid;
+            gap: 10px;
+        }
+
+    .winner-option { background: var(--color-surface); padding: 12px; border-radius: 10px; cursor: pointer; transition: background .25s ease, border-color .25s ease, transform .25s ease; border: 2px solid transparent; text-align: center; }
+    .winner-option:hover { background: var(--color-surface-alt); border-color: var(--color-highlight); }
+    .winner-option.selected { background: var(--color-highlight-soft); border-color: var(--color-highlight); }
+    .winner-option.tie { background: var(--color-surface-strong); }
+    .winner-option.tie:hover { background: var(--color-surface-alt); }
+    .winner-option.tie.selected { background: var(--color-highlight-soft); border-color: var(--color-highlight); }
+
+        .navigation {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .utility-actions {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+        }
+    .utility-actions .btn-reset { background: var(--color-surface-alt); font-size: 0.8rem; padding: 10px 12px; letter-spacing: .5px; }
+    .utility-actions .btn-reset:hover { background: var(--color-surface-strong); }
+
+        /* Modal styles */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+    .modal { background: var(--color-surface-strong); border: 1px solid var(--color-accent); border-radius: 16px; padding: 20px; max-width: 320px; width: 90%; color: #fff; font-size: 0.95rem; box-shadow: 0 4px 18px rgba(0,0,0,0.4); }
+        .modal h3 { margin: 0 0 10px; font-size: 1.05rem; }
+        .modal p { margin: 0 0 16px; opacity: 0.85; line-height: 1.3; }
+        .modal-actions { display: flex; gap: 10px; }
+        .modal-actions button { flex: 1; padding: 10px 12px; font-size: 0.85rem; }
+    .btn-danger { background: var(--color-danger); }
+    .btn-danger:hover { background: var(--color-danger-hover); }
+    .btn-ghost { background: var(--color-surface-alt); }
+    .btn-ghost:hover { background: var(--color-surface-strong); }
+
+        .nav-btn {
+            flex: 1;
+            padding: 12px;
+            font-size: 1rem;
+        }
+
+        .nav-btn:disabled {
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.4);
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .nav-btn:disabled:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: none;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+    .game-summary { background: var(--color-surface-strong); border-radius: 16px; padding: 22px; backdrop-filter: blur(10px); }
+
+    .summary-title { text-align: center; font-size: 1.45rem; margin-bottom: 18px; color: var(--color-highlight); text-shadow: 0 0 6px var(--color-highlight-soft); }
+
+        .final-scores {
+            display: grid;
+            gap: 15px;
+        }
+
+    .final-player { background: var(--color-surface-alt); padding: 14px 16px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid transparent; }
+    .final-player.winner { background: var(--color-highlight-soft); border-color: var(--color-highlight); }
+
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .players-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .hole-number {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-bar">
+                <h1>🐺 GOLF</h1>
+                <div class="current-hole" id="currentHole">Setup</div>
+            </div>
+            <div class="scoreboard hidden" id="scoreboard">
+                <div class="players-grid" id="playersGrid">
+                    <!-- Players will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Setup -->
+        <div class="game-setup" id="gameSetup">
+            <div class="setup-section">
+                <h3>Number of Players</h3>
+                <div class="input-group">
+                    <div class="player-count-buttons">
+                        <button class="btn btn-player-count" id="player3Btn" onclick="setPlayerCount(3)">3</button>
+                        <button class="btn btn-player-count selected" id="player4Btn" onclick="setPlayerCount(4)">4</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setup-section">
+                <h3>Player Names</h3>
+                <div class="input-group">
+                    <label for="player1">Player 1</label>
+                    <input type="text" id="player1" placeholder="Enter name" value="Player 1">
+                </div>
+                <div class="input-group">
+                    <label for="player2">Player 2</label>
+                    <input type="text" id="player2" placeholder="Enter name" value="Player 2">
+                </div>
+                <div class="input-group">
+                    <label for="player3">Player 3</label>
+                    <input type="text" id="player3" placeholder="Enter name" value="Player 3">
+                </div>
+                <div class="input-group" id="player4Group">
+                    <label for="player4">Player 4</label>
+                    <input type="text" id="player4" placeholder="Enter name" value="Player 4">
+                </div>
+            </div>
+
+            <div class="setup-section">
+                <h3>Game Settings</h3>
+                <div class="input-group">
+                    <label for="totalHoles">Total Holes</label>
+                    <select id="totalHoles">
+                        <option value="9">9 Holes</option>
+                        <option value="18" selected>18 Holes</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="btn" onclick="startGame()">Start Game</button>
+        </div>
+
+        <!-- Hole Scoring -->
+        <div class="hole-scoring hidden" id="holeScoring">
+            <div class="wolf-info">
+                <div class="wolf-name" id="wolfName">Wolf for Hole 1: Player 1</div>
+            </div>
+
+
+            <div class="scoring-options" id="scoringOptions">
+                <!-- Options will be populated here -->
+            </div>
+
+            <div class="winner-selection hidden" id="winnerSelection">
+                <h3>Who won this hole?</h3>
+                <div class="winner-options" id="winnerOptions">
+                    <!-- Winner options will be populated here -->
+                </div>
+            </div>
+
+            <div class="navigation">
+                <button class="btn nav-btn" onclick="previousHole()" id="prevHoleBtn" disabled>← Previous</button>
+                <button class="btn nav-btn" onclick="nextHole()" id="nextHoleBtn" disabled>Next →</button>
+            </div>
+            <div class="utility-actions">
+                <button class="btn btn-reset" type="button" onclick="resetGame()">Reset Game</button>
+            </div>
+        </div>
+
+
+        <!-- Game Summary -->
+        <div class="game-summary hidden" id="gameSummary">
+            <div class="summary-title">Game Complete!</div>
+            <div class="final-scores" id="finalScores">
+                <!-- Final scores will be populated here -->
+            </div>
+            <button class="btn" onclick="newGame()">New Game</button>
+        </div>
+        <!-- Custom Reset Modal -->
+        <div class="modal-overlay hidden" id="resetDialog" role="dialog" aria-modal="true" aria-labelledby="resetTitle">
+            <div class="modal">
+                <h3 id="resetTitle">Reset Game?</h3>
+                <p>This will clear all players, scores and progress. This cannot be undone.</p>
+                <div class="modal-actions">
+                    <button class="btn btn-danger" type="button" onclick="confirmReset()">Yes, reset</button>
+                    <button class="btn btn-ghost" type="button" onclick="cancelReset()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class WolfGame {
+            constructor() {
+                this.players = [];
+                this.currentHole = 1;
+                this.totalHoles = 18;
+                this.currentWolf = 0;
+                this.holeResults = [];
+                this.scores = {};
+                this.currentHoleResult = null;
+                this.stateVersion = 1;
+            }
+
+            initializeGame(playerNames, totalHoles) {
+                this.players = playerNames.filter(name => name.trim() !== '');
+                this.totalHoles = totalHoles;
+                this.currentHole = 1;
+                // Randomize the first wolf
+                this.currentWolf = Math.floor(Math.random() * this.players.length);
+                this.holeResults = [];
+                this.scores = {};
+                
+                // Initialize scores
+                this.players.forEach(player => {
+                    this.scores[player] = 0;
+                });
+
+                this.updateScoreboard();
+                this.showHoleScoring();
+                this.saveState();
+            }
+
+            updateScoreboard() {
+                const playersGrid = document.getElementById('playersGrid');
+                const scoreboard = document.getElementById('scoreboard');
+                playersGrid.innerHTML = '';
+
+                if (this.players.length === 0) {
+                    scoreboard.classList.add('hidden');
+                } else {
+                    this.players.forEach((player, idx) => {
+                        const playerCard = document.createElement('div');
+                        playerCard.className = 'player-card' + (idx === this.currentWolf ? ' wolf' : '');
+                        playerCard.title = `${player}: ${this.scores[player]} pts`;
+                        playerCard.innerHTML = `
+                            <div class=\"player-name\">${player}</div>
+                            <div class=\"player-score\">${this.scores[player]}</div>
+                        `;
+                        playersGrid.appendChild(playerCard);
+                    });
+                    scoreboard.classList.remove('hidden');
+                }
+                this.saveState();
+            }
+
+            showHoleScoring() {
+                document.getElementById('gameSetup').classList.add('hidden');
+                document.getElementById('holeScoring').classList.remove('hidden');
+                document.getElementById('gameSummary').classList.add('hidden');
+                document.getElementById('winnerSelection').classList.add('hidden');
+
+                const wolfName = document.getElementById('wolfName');
+                const currentHole = document.getElementById('currentHole');
+
+                wolfName.textContent = `Wolf for Hole ${this.currentHole}: ${this.players[this.currentWolf]}`;
+                currentHole.textContent = `${this.currentHole}/${this.totalHoles}`;
+
+                this.updateNavigationButtons();
+                this.populateScoringOptions();
+                this.highlightSelectedOption();
+            }
+
+            populateScoringOptions() {
+                const scoringOptions = document.getElementById('scoringOptions');
+                scoringOptions.innerHTML = '';
+
+                const wolfName = this.players[this.currentWolf];
+                const otherPlayers = this.players.filter((_, index) => index !== this.currentWolf);
+
+                if (this.players.length === 3) {
+                    // 3 players: Put Super Wolf first, then Wolf Solo, then partner options
+                    const superWolfOption = document.createElement('div');
+                    superWolfOption.className = 'scoring-option';
+                    superWolfOption.innerHTML = `
+                        <div class="option-title">🔥 Super Wolf</div>
+                        <div class="option-description">High-risk solo play (double stakes)</div>
+                    `;
+                    superWolfOption.onclick = () => this.selectScoringOption('lone-wolf');
+                    scoringOptions.appendChild(superWolfOption);
+
+                    const soloOption = document.createElement('div');
+                    soloOption.className = 'scoring-option';
+                    soloOption.innerHTML = `
+                        <div class="option-title">🐺 Wolf Solo</div>
+                        <div class="option-description">Standard solo play</div>
+                    `;
+                    soloOption.onclick = () => this.selectScoringOption('wolf-solo');
+                    scoringOptions.appendChild(soloOption);
+
+                    // Partner options
+                    otherPlayers.forEach(partner => {
+                        const partnerOption = document.createElement('div');
+                        partnerOption.className = 'scoring-option';
+                        partnerOption.innerHTML = `
+                            <div class="option-title">👨‍❤️‍👨 Wolf + ${partner} vs ${otherPlayers.find(p => p !== partner)}</div>
+                            <div class="option-description">Wolf teams up with ${partner}</div>
+                        `;
+                        partnerOption.onclick = () => this.selectScoringOption('wolf-partner', partner);
+                        scoringOptions.appendChild(partnerOption);
+                    });
+                } else {
+                    // 4 players: Wolf can go solo or choose a partner
+                    // Super Wolf option (replaces Lone Wolf)
+                    const superWolfOption = document.createElement('div');
+                    superWolfOption.className = 'scoring-option';
+                    superWolfOption.innerHTML = `
+                        <div class="option-title">🔥 Super Wolf</div>
+                        <div class="option-description">High-risk solo play (double stakes)</div>
+                    `;
+                    superWolfOption.onclick = () => this.selectScoringOption('lone-wolf');
+                    scoringOptions.appendChild(superWolfOption);
+
+                    // Standard Wolf Solo (non-doubled) option
+                    const soloOption = document.createElement('div');
+                    soloOption.className = 'scoring-option';
+                    soloOption.innerHTML = `
+                        <div class="option-title">🐺 Wolf Solo</div>
+                        <div class="option-description">Standard solo play</div>
+                    `;
+                    soloOption.onclick = () => this.selectScoringOption('wolf-solo');
+                    scoringOptions.appendChild(soloOption);
+
+                    // Partner options
+                    otherPlayers.forEach(partner => {
+                        const opponents = otherPlayers.filter(p => p !== partner);
+                        const partnerOption = document.createElement('div');
+                        partnerOption.className = 'scoring-option';
+                        partnerOption.innerHTML = `
+                            <div class="option-title">👨‍❤️‍👨 Wolf + ${partner} vs ${opponents.join(' + ')}</div>
+                            <div class="option-description">Wolf teams up with ${partner}</div>
+                        `;
+                        partnerOption.onclick = () => this.selectScoringOption('wolf-partner', partner);
+                        scoringOptions.appendChild(partnerOption);
+                    });
+                }
+            }
+
+            selectScoringOption(optionType, partner = null) {
+                // Clear previous selections
+                document.querySelectorAll('.scoring-option').forEach(option => {
+                    option.classList.remove('selected');
+                });
+
+                // Mark selected option
+                event.target.closest('.scoring-option').classList.add('selected');
+
+                const wolfName = this.players[this.currentWolf];
+                let result;
+
+                if (optionType === 'wolf-solo') {
+                    result = {
+                        type: 'wolf-solo',
+                        wolf: wolfName,
+                        opponents: this.players.filter((_, index) => index !== this.currentWolf)
+                    };
+                } else if (optionType === 'lone-wolf') {
+                    result = {
+                        type: 'lone-wolf',
+                        wolf: wolfName,
+                        opponents: this.players.filter((_, index) => index !== this.currentWolf)
+                    };
+                } else if (optionType === 'wolf-partner') {
+                    const opponents = this.players.filter(p => p !== wolfName && p !== partner);
+                    result = {
+                        type: 'wolf-partner',
+                        wolf: wolfName,
+                        partner: partner,
+                        opponents: opponents
+                    };
+                }
+
+                this.currentHoleResult = result;
+                this.showWinnerSelection();
+                this.saveState();
+            }
+
+            // ...existing code...
+            recordHoleResult(winners) {
+                if (!this.currentHoleResult) return;
+
+                const result = this.currentHoleResult;
+                let pointsAwarded = {};
+
+                // Pot size is 1 point baseline for all modes now.
+                // Scoring rules (pot=1):
+                // wolf-partner: Wolf team win -> each 1. Solo opponent win -> 2. Opponent team win -> each 1.
+                // wolf-solo: Wolf vs field. Wolf win -> 2 (2× pot). Solo opponent win -> 2. Opponents team win -> each 1.
+                // lone-wolf: Lone Wolf vs field with doubled/doubled stakes: Wolf win -> 4 (4× pot). Solo opponent win -> 4. Opponents team win -> each 2 (2× pot).
+                if (result.type === 'wolf-solo') {
+                    if (winners.includes(result.wolf)) {
+                        // Wolf solo wins: 2 points
+                        pointsAwarded[result.wolf] = 2;
+                    } else if (winners.length === 1 && result.opponents.includes(winners[0])) {
+                        // Single opponent beats wolf: 2 points
+                        pointsAwarded[winners[0]] = 2;
+                    } else {
+                        // Opponents (team) win: each gets 1
+                        result.opponents.forEach(opponent => {
+                            pointsAwarded[opponent] = 1;
+                        });
+                    }
+                } else if (result.type === 'lone-wolf') {
+                    if (winners.includes(result.wolf)) {
+                        // Lone wolf wins: 4 points
+                        pointsAwarded[result.wolf] = 4;
+                    } else if (winners.length === 1 && result.opponents.includes(winners[0])) {
+                        // Single opponent beats lone wolf: 4 points
+                        pointsAwarded[winners[0]] = 4;
+                    } else {
+                        // Opponents (team) win: each gets 2
+                        result.opponents.forEach(opponent => {
+                            pointsAwarded[opponent] = 2;
+                        });
+                    }
+                } else if (result.type === 'wolf-partner') {
+                    const wolfTeam = [result.wolf, result.partner];
+                    const opponentTeam = result.opponents;
+
+                    if (winners.some(w => wolfTeam.includes(w))) {
+                        // Wolf+Partner win: Both get pot (pot=1)
+                        wolfTeam.forEach(player => {
+                            pointsAwarded[player] = 1;
+                        });
+                    } else if (winners.length === 1 && opponentTeam.includes(winners[0])) {
+                        // Solo opponent beats Wolf+Partner: Solo gets 2× pot (pot=1, so 2)
+                        pointsAwarded[winners[0]] = 2;
+                    } else {
+                        // Opponent team wins: Each gets pot (pot=1)
+                        opponentTeam.forEach(player => {
+                            pointsAwarded[player] = 1;
+                        });
+                    }
+                }
+
+                // Tie: No points
+                if (winners.length === 0) {
+                    pointsAwarded = {};
+                }
+
+                // Update scores
+                Object.keys(pointsAwarded).forEach(player => {
+                    this.scores[player] += pointsAwarded[player];
+                });
+
+                // Store hole result
+                this.holeResults.push({
+                    hole: this.currentHole,
+                    result: result,
+                    winners: winners,
+                    pointsAwarded: pointsAwarded
+                });
+
+                this.updateScoreboard();
+                this.saveState();
+            }
+            // ...existing code...
+
+            nextHole() {
+                if (this.currentHole < this.totalHoles) {
+                    this.currentHole++;
+                    this.currentWolf = (this.currentWolf + 1) % this.players.length;
+                    this.currentHoleResult = null;
+                    this.updateNavigationButtons();
+                    this.showHoleScoring();
+                } else {
+                    this.showGameSummary();
+                }
+                this.saveState();
+            }
+
+            previousHole() {
+                if (this.currentHole > 1) {
+                    this.currentHole--;
+                    this.currentWolf = (this.currentWolf - 1 + this.players.length) % this.players.length;
+                    this.currentHoleResult = null;
+                    this.updateNavigationButtons();
+                    this.showHoleScoring();
+                }
+                this.saveState();
+            }
+
+            updateNavigationButtons() {
+                const prevBtn = document.getElementById('prevHoleBtn');
+                const nextBtn = document.getElementById('nextHoleBtn');
+                
+                // Update previous button
+                prevBtn.disabled = this.currentHole <= 1;
+                
+                // Update next button
+                nextBtn.disabled = this.currentHole >= this.totalHoles;
+            }
+
+            showWinnerSelection() {
+                const result = this.currentHoleResult;
+                const winnerOptions = document.getElementById('winnerOptions');
+                const winnerSelection = document.getElementById('winnerSelection');
+                
+                winnerOptions.innerHTML = '';
+                
+                // Add tie option
+                const tieOption = document.createElement('div');
+                tieOption.className = 'winner-option tie';
+                tieOption.innerHTML = 'Tie (No winners)';
+                tieOption.onclick = () => this.selectWinner([]);
+                winnerOptions.appendChild(tieOption);
+
+                if (result.type === 'wolf-solo' || result.type === 'lone-wolf') {
+                    // Wolf solo - Wolf vs opponents
+                    const wolfOption = document.createElement('div');
+                    wolfOption.className = 'winner-option';
+                    wolfOption.innerHTML = `${result.wolf} (Wolf)`;
+                    wolfOption.onclick = () => this.selectWinner([result.wolf]);
+                    winnerOptions.appendChild(wolfOption);
+
+                    const opponentsOption = document.createElement('div');
+                    opponentsOption.className = 'winner-option';
+                    opponentsOption.innerHTML = `${result.opponents.join(' + ')} (Opponents)`;
+                    opponentsOption.onclick = () => this.selectWinner(result.opponents);
+                    winnerOptions.appendChild(opponentsOption);
+                } else {
+                    // Wolf + partner - Wolf team vs opponent team
+                    const wolfTeamOption = document.createElement('div');
+                    wolfTeamOption.className = 'winner-option';
+                    wolfTeamOption.innerHTML = `${result.wolf} + ${result.partner} (Wolf Team)`;
+                    wolfTeamOption.onclick = () => this.selectWinner([result.wolf, result.partner]);
+                    winnerOptions.appendChild(wolfTeamOption);
+
+                    const opponentTeamOption = document.createElement('div');
+                    opponentTeamOption.className = 'winner-option';
+                    opponentTeamOption.innerHTML = `${result.opponents.join(' + ')} (Opponent Team)`;
+                    opponentTeamOption.onclick = () => this.selectWinner(result.opponents);
+                    winnerOptions.appendChild(opponentTeamOption);
+                }
+
+                winnerSelection.classList.remove('hidden');
+            }
+
+            selectWinner(winners) {
+                // Clear previous selections
+                document.querySelectorAll('.winner-option').forEach(option => {
+                    option.classList.remove('selected');
+                });
+
+                // Mark selected option
+                event.target.classList.add('selected');
+
+                this.recordHoleResult(winners);
+                
+                // Hide winner selection and automatically move to next hole
+                document.getElementById('winnerSelection').classList.add('hidden');
+                
+                // Auto-advance to next hole after a short delay
+                setTimeout(() => {
+                    this.nextHole();
+                }, 1000);
+            }
+
+
+            showGameSummary() {
+                document.getElementById('holeScoring').classList.add('hidden');
+                document.getElementById('gameSummary').classList.remove('hidden');
+
+                const finalScores = document.getElementById('finalScores');
+                finalScores.innerHTML = '';
+
+                // Sort players by score
+                const sortedPlayers = Object.entries(this.scores)
+                    .sort(([,a], [,b]) => b - a);
+
+                sortedPlayers.forEach(([player, score], index) => {
+                    const playerDiv = document.createElement('div');
+                    playerDiv.className = `final-player ${index === 0 ? 'winner' : ''}`;
+                    playerDiv.innerHTML = `
+                        <div class="result-players">${player}</div>
+                        <div class="result-points">${score} points</div>
+                    `;
+                    finalScores.appendChild(playerDiv);
+                });
+                this.saveState();
+            }
+
+            newGame() {
+                // Alias to reset for backward compatibility with existing button
+                this.resetToSetup();
+            }
+
+            resetToSetup() {
+                // Clear data
+                this.players = [];
+                this.scores = {};
+                this.holeResults = [];
+                this.currentHoleResult = null;
+                this.currentHole = 1;
+                this.totalHoles = 18;
+                this.currentWolf = 0;
+                // Clear UI inputs
+                ['player1','player2','player3','player4'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.value = '';
+                });
+                // Show setup, hide others
+                document.getElementById('gameSetup').classList.remove('hidden');
+                document.getElementById('holeScoring').classList.add('hidden');
+                document.getElementById('gameSummary').classList.add('hidden');
+                document.getElementById('winnerSelection').classList.add('hidden');
+                document.getElementById('currentHole').textContent = 'Setup';
+                // Clear scoreboard
+                document.getElementById('playersGrid').innerHTML = '';
+                document.getElementById('scoreboard').classList.add('hidden');
+                // Disable nav buttons
+                document.getElementById('prevHoleBtn').disabled = true;
+                document.getElementById('nextHoleBtn').disabled = true;
+                // Reset player count global
+                playerCount = 4;
+                document.getElementById('player4Group').style.display = 'block';
+                document.getElementById('player3Btn').classList.remove('selected');
+                document.getElementById('player4Btn').classList.add('selected');
+                // Clear persisted state
+                this.clearState();
+                this.saveState();
+            }
+
+            saveState() {
+                try {
+                    const state = {
+                        version: this.stateVersion,
+                        players: this.players,
+                        currentHole: this.currentHole,
+                        totalHoles: this.totalHoles,
+                        currentWolf: this.currentWolf,
+                        holeResults: this.holeResults,
+                        scores: this.scores,
+                        currentHoleResult: this.currentHoleResult
+                    };
+                    localStorage.setItem('wolfGameState', JSON.stringify(state));
+                } catch (e) {
+                    console.warn('Failed to save state', e);
+                }
+            }
+
+            clearState() {
+                localStorage.removeItem('wolfGameState');
+            }
+
+            loadState() {
+                try {
+                    const raw = localStorage.getItem('wolfGameState');
+                    if (!raw) return false;
+                    const data = JSON.parse(raw);
+                    if (!data || data.version !== this.stateVersion) return false;
+                    this.players = data.players || [];
+                    this.currentHole = data.currentHole || 1;
+                    this.totalHoles = data.totalHoles || 18;
+                    this.currentWolf = data.currentWolf || 0;
+                    this.holeResults = data.holeResults || [];
+                    this.scores = data.scores || {};
+                    this.currentHoleResult = data.currentHoleResult || null;
+                    // Restore UI
+                    if (this.players.length) {
+                        this.updateScoreboard();
+                        this.showHoleScoring();
+                        // Ensure nav buttons reflect state
+                        this.updateNavigationButtons();
+                    }
+                    return true;
+                } catch (e) {
+                    console.warn('Failed to load state', e);
+                    return false;
+                }
+            }
+
+            highlightSelectedOption() {
+                if (!this.currentHoleResult) return;
+                const type = this.currentHoleResult.type;
+                const partner = this.currentHoleResult.partner;
+                // After options rendered, find matching block
+                const options = Array.from(document.querySelectorAll('#scoringOptions .scoring-option'));
+                options.forEach(opt => {
+                    const text = opt.textContent;
+                    opt.classList.remove('selected');
+                    if (type === 'lone-wolf' && /Super Wolf/i.test(text)) opt.classList.add('selected');
+                    else if (type === 'wolf-solo' && /Wolf Solo/i.test(text)) opt.classList.add('selected');
+                    else if (type === 'wolf-partner' && partner && text.includes(`+ ${partner} `)) opt.classList.add('selected');
+                });
+            }
+        }
+
+        // Global game instance
+        const game = new WolfGame();
+
+        // Global variable to track player count
+        let playerCount = 4;
+
+        function setPlayerCount(count) {
+            const player3Btn = document.getElementById('player3Btn');
+            const player4Btn = document.getElementById('player4Btn');
+            const player4Group = document.getElementById('player4Group');
+            
+            // Update global variable
+            playerCount = count;
+            
+            // Update button states
+            if (count === 3) {
+                player3Btn.classList.add('selected');
+                player4Btn.classList.remove('selected');
+                player4Group.style.display = 'none';
+            } else {
+                player3Btn.classList.remove('selected');
+                player4Btn.classList.add('selected');
+                player4Group.style.display = 'block';
+            }
+        }
+
+        function startGame() {
+            const totalHoles = parseInt(document.getElementById('totalHoles').value);
+            const playerNames = [
+                document.getElementById('player1').value.trim(),
+                document.getElementById('player2').value.trim(),
+                document.getElementById('player3').value.trim()
+            ];
+
+            if (playerCount === 4) {
+                playerNames.push(document.getElementById('player4').value.trim());
+            }
+
+            // Validate names
+            if (playerNames.some(name => name === '')) {
+                alert('Please enter names for all players!');
+                return;
+            }
+
+            game.initializeGame(playerNames, totalHoles);
+        }
+
+        function nextHole() {
+            game.nextHole();
+        }
+
+        function previousHole() {
+            game.previousHole();
+        }
+
+        function newGame() {
+            game.newGame();
+        }
+
+        function resetGame() {
+            showResetDialog();
+        }
+    // Ensure global exposure even if bundlers / strict scoping modifies context
+    window.resetGame = resetGame;
+        function showResetDialog(){
+            document.getElementById('resetDialog').classList.remove('hidden');
+            // focus first button
+            const btn = document.querySelector('#resetDialog .btn-danger');
+            if (btn) btn.focus();
+        }
+        function cancelReset(){
+            document.getElementById('resetDialog').classList.add('hidden');
+        }
+        function confirmReset(){
+            document.getElementById('resetDialog').classList.add('hidden');
+            game.resetToSetup();
+        }
+        window.cancelReset = cancelReset;
+        window.confirmReset = confirmReset;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('player4Group').style.display = 'block';
+            // Attempt to load existing state
+            const restored = game.loadState();
+            if (!restored) {
+                // Remain on setup screen
+            }
+        });
+    </script>
+</body>
+</html>
