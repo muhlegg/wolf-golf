@@ -741,6 +741,21 @@
                     modeSection.classList.remove('hidden');
                 }
                 this.updateScoreboard();
+                this.scrollToTop();
+            }
+
+            scrollToTop() {
+                // Defer to next frame to ensure layout is settled
+                if (typeof window !== 'undefined') {
+                    requestAnimationFrame(() => {
+                        try {
+                            window.scrollTo({ top: 0, behavior: 'instant' });
+                        } catch(e) {
+                            // Fallback for browsers without 'instant'
+                            window.scrollTo(0,0);
+                        }
+                    });
+                }
             }
 
             /* Player Overview Feature */
@@ -1387,6 +1402,7 @@
             showGameSummary() {
                 document.getElementById('holeScoring').classList.add('hidden');
                 document.getElementById('gameSummary').classList.remove('hidden');
+                this.scrollToTop();
 
                 const finalScores = document.getElementById('finalScores');
                 finalScores.innerHTML = '';
@@ -1495,6 +1511,7 @@
                 // Clear persisted state
                 this.clearState();
                 this.saveState();
+                this.scrollToTop();
             }
 
             saveState() {
