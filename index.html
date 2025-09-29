@@ -161,6 +161,7 @@
         .player-score .score-value.bump { animation: scorePop .6s ease; }
         @keyframes scorePop { 0% { transform:scale(1); filter:brightness(1); text-shadow:0 0 4px rgba(200,255,102,0.3);} 25% { transform:scale(1.3); text-shadow:0 0 10px rgba(200,255,102,0.8);} 55% { transform:scale(0.92);} 100% { transform:scale(1); text-shadow:0 0 4px rgba(200,255,102,0.35);} }
     .wolf-count { font-size: 0.55rem; font-weight: 400; color: rgba(255,255,255,0.45); margin-left: 4px; letter-spacing: .4px; position: relative; top: -1px; }
+    .money-value { font-size:0.55rem; font-weight:600; color:rgba(200,255,102,0.9); margin-left:6px; letter-spacing:.4px; opacity:.85; }
 
         .game-setup {
             background: var(--color-surface-strong);
@@ -258,9 +259,9 @@
             gap: 10px;
         }
 
-    .scoring-option { background: var(--color-surface); padding: 14px 16px; border-radius: 12px; cursor: pointer; transition: background .25s ease, border-color .25s ease, transform .25s ease; border: 2px solid transparent; }
-    .scoring-option:hover { background: var(--color-surface-alt); border-color: var(--color-highlight); }
-    .scoring-option.selected { background: var(--color-highlight-soft); border-color: var(--color-highlight); }
+    .scoring-option { background: var(--color-surface); padding: 12px 14px; border-radius: 10px; cursor: pointer; border: 1px solid var(--color-surface-alt); transition: background .2s ease, border-color .2s ease; }
+    .scoring-option:hover { background: var(--color-surface-alt); }
+    .scoring-option.selected { border-color: var(--color-accent); }
     .scoring-option:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 
         .option-title {
@@ -279,7 +280,10 @@
     .mode-selection { background: var(--color-surface-alt); border-radius: 12px; padding: 16px; margin: 18px 0; }
     .mode-selection h3 { text-align:center; margin:0 0 14px; font-size:1.05rem; }
     .scoring-option .option-title { display:flex; align-items:center; justify-content:space-between; gap:8px; }
-    .scoring-option .badge { display:inline-block; margin-left:10px; margin-right:0; font-size:0.6rem; font-weight:700; letter-spacing:.5px; background:rgba(200,255,102,0.12); color:var(--color-highlight); padding:3px 7px 3px; border-radius:12px; line-height:1; position:relative; top:0; border:1px solid var(--color-highlight); box-shadow:none; }
+    /* compact points badge */
+    .scoring-option .points-badge { background:var(--color-surface-alt); color:var(--color-highlight); border:1px solid var(--color-surface-alt); padding:3px 6px 2px; font-size:0.55rem; font-weight:600; letter-spacing:.4px; border-radius:9px; line-height:1; white-space:nowrap; margin-left:auto; }
+    .scoring-option .option-desc { margin-top:6px; font-size:0.55rem; letter-spacing:.4px; opacity:.6; line-height:1.25; font-weight:500; }
+    .scoring-option .option-points { margin-top:6px; font-size:0.55rem; letter-spacing:.4px; opacity:.65; line-height:1.25; font-weight:500; }
 
         .winner-selection h3 {
             text-align: center;
@@ -386,6 +390,17 @@
     .ov-wolf { opacity:.75; }
     .no-data { padding:14px 4px; text-align:center; font-size:.8rem; opacity:.7; }
     .current-row { background: var(--color-accent-soft) !important; }
+    /* Player overview specific tweaks */
+    #playerOverviewOverlay .overview-title { display:flex; align-items:center; gap:8px; }
+    #playerOverviewOverlay .player-switch { background:var(--color-surface-alt); border:1px solid var(--color-accent); color:#fff; padding:4px 8px; border-radius:8px; font-size:.55rem; font-weight:600; letter-spacing:.5px; cursor:pointer; }
+    #playerOverviewOverlay .player-switch:hover { background:var(--color-surface-strong); }
+    #playerOverviewOverlay table.overview-table col.mode { width:48px; }
+    #playerOverviewOverlay table.overview-table col.points { width:50px; }
+    #playerOverviewOverlay table.overview-table col.cum { width:58px; }
+    #playerOverviewOverlay table.overview-table td.points-pos { color: var(--color-highlight); }
+    #playerOverviewOverlay table.overview-table td.points-zero { opacity:.45; }
+    #playerOverviewOverlay table.overview-table td.cum { font-weight:600; color: var(--color-highlight); }
+    #playerOverviewOverlay .small-hint { text-align:right; }
      @media (max-width:700px){
          table.overview-table { font-size:.53rem; }
          table.overview-table th, table.overview-table td { padding:2px 3px; }
@@ -475,6 +490,35 @@
                 </div>
               </div>
 
+            <div class="setup-section">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px;">
+                    <h3 style="margin:0;">Stakes</h3>
+                    <label style="display:flex; align-items:center; gap:6px; font-size:0.65rem; letter-spacing:.5px; text-transform:uppercase; background:var(--color-surface-alt); padding:6px 10px; border-radius:8px; cursor:pointer;">
+                        <input type="checkbox" id="bettingEnabled" onchange="toggleBettingInputs()" style="width:16px; height:16px;"> Enable
+                    </label>
+                </div>
+                <div class="input-group" style="display:flex; flex-direction:column; gap:8px;">
+                    <div id="stakesAmountRow" style="display:none; flex-direction:column; gap:6px;">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <label for="amountPerPoint" style="font-size:0.6rem; letter-spacing:.5px; text-transform:uppercase; opacity:.75; flex:0 0 90px;">Stake / pt</label>
+                            <input type="range" id="amountPerPoint" min="0.05" max="20" step="0.05" value="0.15" disabled oninput="updateStakeSliderDisplay(); updateStakesEstimates();" style="flex:1;">
+                            <div id="amountPerPointValue" style="font-size:0.7rem; font-weight:600; letter-spacing:.5px; width:54px; text-align:right;">€0.15</div>
+                        </div>
+                        <div style="font-size:0.55rem; opacity:.55; line-height:1.2;">Range €0.05 – €20.00. Adjust to set stakes per point.</div>
+                    </div>
+                    <div id="stakesEstimatorRow" style="display:none; flex-direction:column; gap:6px; background:var(--color-surface-alt); padding:10px 12px; border-radius:10px;">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <label for="teeWolfFreq" style="font-size:0.6rem; letter-spacing:.5px; text-transform:uppercase; opacity:.75; flex:0 0 110px;">Tee Wolf freq</label>
+                            <input type="range" id="teeWolfFreq" min="0" max="100" step="5" value="60" style="flex:1;" oninput="updateStakesEstimates()">
+                            <div id="teeWolfFreqLabel" style="font-size:0.6rem; opacity:.7; width:42px; text-align:right;">60%</div>
+                        </div>
+                        <div id="estimatedMaxLoss" style="font-size:0.7rem; font-weight:600; letter-spacing:.5px; color:var(--color-highlight);">Estimated max loss: —</div>
+                        <div style="font-size:0.48rem; opacity:.55; margin-top:2px; line-height:1.1;" id="estimateContextNote">3P Tee Wolf cap 4 / Fairway 2. 4P Tee Wolf cap 6 / Fairway 3.</div>
+                        <div style="font-size:0.55rem; opacity:.55; line-height:1.15;">Approximate worst-case if many Tee Wolf attempts succeed or fail badly. Adjust slider for aggressiveness. Actual results can vary.</div>
+                    </div>
+                </div>
+            </div>
+
             <button class="btn" onclick="startGame()">Start Game</button>
         </div>
 
@@ -547,6 +591,20 @@
         </div>
     </div>
 
+    <!-- Player Overview Panel -->
+    <div id="playerOverviewOverlay" class="overview-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="playerOverviewTitle">
+        <div class="overview-panel">
+            <div class="overview-header">
+                <div class="overview-title" id="playerOverviewTitle">Player Overview</div>
+                <div class="overview-tools" id="playerOverviewTools">
+                    <button class="overview-close" type="button" onclick="game.hidePlayerOverview()">Close ✕</button>
+                </div>
+            </div>
+            <div class="overview-table-wrapper" id="playerOverviewTableWrapper"></div>
+            <div class="small-hint" style="margin-top:12px; font-size:.55rem; opacity:.55; letter-spacing:.5px;">Tap a played hole to jump</div>
+        </div>
+    </div>
+
     <script>
         class WolfGame {
             constructor() {
@@ -564,6 +622,8 @@
                 this.wolfHistory = []; // holds wolf player indices per hole (including current hole)
                 this.currentHoleWinners = null; // winners for currently viewed hole (for highlighting)
                 this.lastScores = {}; // transient previous scores for delta animation
+                this.bettingEnabled = false;
+                this.amountPerPoint = 0;
             }
 
             initializeGame(playerNames, totalHoles) {
@@ -597,6 +657,11 @@
                 this.scores = {};
                 this.currentHoleResult = null;
                 this.players.forEach(p => this.scores[p] = 0);
+                // betting config (capture current UI values)
+                const betChk = document.getElementById('bettingEnabled');
+                const amtInput = document.getElementById('amountPerPoint');
+                if (betChk) this.bettingEnabled = betChk.checked; else this.bettingEnabled = false;
+                if (this.bettingEnabled && amtInput) this.amountPerPoint = parseFloat(amtInput.value)||0; else this.amountPerPoint = 0;
                 this.updateScoreboard();
                 this.showHoleScoring();
                 this.saveState();
@@ -610,27 +675,11 @@
                 if (this.players.length === 0) { 
                     scoreboard.classList.add('hidden');
                 } else {
-                    // Determine medal rankings (🥇🥈🥉) with tie-aware rank assignment.
-                    // Show medals ONLY once any points have been scored (avoid arbitrary medals at 0-0-0-0).
-                    const medalMap = {}; // player -> medal emoji
-                    const maxScore = this.players.reduce((m,p)=> Math.max(m, this.scores[p]||0), 0);
-                    if (maxScore > 0) {
-                        const sorted = [...this.players].sort((a,b)=> (this.scores[b]||0) - (this.scores[a]||0));
-                        let lastScore = null;
-                        let displayedRank = 0; // rank considering ties
-                        let index = 0; // position in sorted list
-                        for (const p of sorted) {
-                            index++;
-                            const sc = this.scores[p] || 0;
-                            if (sc !== lastScore) {
-                                displayedRank = index; // new rank only when score changes
-                                lastScore = sc;
-                            }
-                            if (displayedRank === 1) medalMap[p] = '🥇';
-                            else if (displayedRank === 2) medalMap[p] = '🥈';
-                            else if (displayedRank === 3) medalMap[p] = '🥉';
-                        }
+                    let moneyNet = null;
+                    if (this.bettingEnabled && this.amountPerPoint > 0) {
+                        moneyNet = this.computeMoneyNet();
                     }
+                    // Medal ranking calculation removed from live scoreboard for space; medals shown only in final summary.
                     // Count wolf occurrences from history
                     const counts = {};
                     this.players.forEach(p => counts[p] = 0);
@@ -641,16 +690,18 @@
                     this.players.forEach(player => {
                         const playerCard = document.createElement('div');
                         playerCard.className = 'player-card';
+                        playerCard.dataset.player = player;
                         const score = this.scores[player] || 0;
                         const wolfCount = counts[player] || 0;
-                        const medal = medalMap[player] ? `<span class=\"medal\">${medalMap[player]}</span>` : '';
                         const deltaVal = (prev[player] !== undefined) ? (score - (prev[player]||0)) : 0;
                         const bumpClass = deltaVal !== 0 ? ' bump' : '';
                         playerCard.title = `${player}: ${score} pts, Wolf ${wolfCount}x`;
+                        const moneyStr = (moneyNet && (moneyNet[player] || moneyNet[player]===0)) ? `<span class=\"money-value\">€${this.formatMoney(moneyNet[player])}</span>` : '';
                         playerCard.innerHTML = `
-                            <div class=\"player-name\">${medal}${player}</div>
-                            <div class=\"player-score\"><span class=\"score-value${bumpClass}\">${score}</span><span class=\"wolf-count\">(${wolfCount})</span></div>
+                            <div class=\"player-name\">${player}</div>
+                            <div class=\"player-score\"><span class=\"score-value${bumpClass}\">${score}</span><span class=\"wolf-count\">(${wolfCount})</span>${moneyStr}</div>
                         `;
+                        playerCard.addEventListener('click', () => this.showPlayerOverview(player));
                         playersGrid.appendChild(playerCard);
                     });
                     scoreboard.classList.remove('hidden');
@@ -690,6 +741,144 @@
                     modeSection.classList.remove('hidden');
                 }
                 this.updateScoreboard();
+            }
+
+            /* Player Overview Feature */
+            showPlayerOverview(player) {
+                // Hide general overview if open
+                const ov = document.getElementById('overviewOverlay');
+                if (ov && !ov.classList.contains('hidden')) ov.classList.add('hidden');
+                const overlay = document.getElementById('playerOverviewOverlay');
+                if (!overlay) return;
+                // Build table
+                this.buildPlayerOverviewTable(player);
+                // Title & nav
+                const titleEl = document.getElementById('playerOverviewTitle');
+                if (titleEl) titleEl.innerHTML = `Player: <span style="color:var(--color-highlight);">${player}</span>`;
+                this.injectPlayerSwitcher(player);
+                overlay.classList.remove('hidden');
+                // Trap simple ESC
+                if (!this._playerEscHandler) {
+                    this._playerEscHandler = (e) => { if (e.key === 'Escape') this.hidePlayerOverview(); };
+                    document.addEventListener('keydown', this._playerEscHandler);
+                }
+            }
+
+            hidePlayerOverview() {
+                const overlay = document.getElementById('playerOverviewOverlay');
+                if (overlay) overlay.classList.add('hidden');
+                if (this._playerEscHandler) {
+                    document.removeEventListener('keydown', this._playerEscHandler);
+                    this._playerEscHandler = null;
+                }
+            }
+
+            injectPlayerSwitcher(current) {
+                const tools = document.getElementById('playerOverviewTools');
+                if (!tools) return;
+                // Remove existing switches except close
+                [...tools.querySelectorAll('.player-switch')].forEach(b=>b.remove());
+                if (this.players.length <= 1) return;
+                const idx = this.players.indexOf(current);
+                const prevIdx = (idx - 1 + this.players.length) % this.players.length;
+                const nextIdx = (idx + 1) % this.players.length;
+                const prevBtn = document.createElement('button');
+                prevBtn.type = 'button';
+                prevBtn.className = 'player-switch';
+                prevBtn.textContent = `← ${this.players[prevIdx]}`;
+                prevBtn.onclick = () => this.showPlayerOverview(this.players[prevIdx]);
+                const nextBtn = document.createElement('button');
+                nextBtn.type = 'button';
+                nextBtn.className = 'player-switch';
+                nextBtn.textContent = `${this.players[nextIdx]} →`;
+                nextBtn.onclick = () => this.showPlayerOverview(this.players[nextIdx]);
+                tools.insertBefore(prevBtn, tools.firstChild);
+                tools.appendChild(nextBtn);
+            }
+
+            buildPlayerOverviewTable(player) {
+                const wrap = document.getElementById('playerOverviewTableWrapper');
+                if (!wrap) return;
+                const total = this.totalHoles;
+                let cumulative = 0;
+                // Determine how many holes have assigned wolves (visited holes)
+                const visitedHoles = this.wolfHistory.length; // holes with known wolf
+                const rows = [];
+                rows.push(`<table class="overview-table player-table"><colgroup><col class="hole"><col class="mode"><col class="points"><col class="cum"></colgroup><thead><tr><th>H</th><th>M</th><th>Pts</th><th>Cum</th></tr></thead><tbody>`);
+                for (let h=1; h<= total; h++) {
+                    const rec = this.holeResults.find(r=>r.hole===h);
+                    let pts = 0;
+                    let mode = '';
+                    if (rec) {
+                        pts = rec.pointsAwarded[player] || 0;
+                        mode = this.abbrevMode(rec.result, player);
+                    } else if (h <= visitedHoles) {
+                        // visited but not scored yet
+                        const wolfIdx = this.wolfHistory[h-1];
+                        const res = (h === this.currentHole) ? this.currentHoleResult : null;
+                        mode = res ? this.abbrevMode(res, player) : (this.players[wolfIdx] === player ? '—W' : '—');
+                    } else {
+                        mode = '·';
+                    }
+                    cumulative += pts;
+                    const clickable = h <= visitedHoles; // only allow jump to visited holes
+                    rows.push(`<tr data-hole="${h}" class="${h===this.currentHole?'current-row':''} ${clickable?'clickable-row':''}" style="${clickable?'cursor:pointer;':''}">`+
+                        `<td class="ov-hole">${h}</td>`+
+                        `<td class="ov-mode">${mode}</td>`+
+                        `<td class="${pts>0?'points-pos':'points-zero'}">${pts>0?('+'+pts):pts}</td>`+
+                        `<td class="cum">${cumulative}</td>`+
+                        `</tr>`);
+                }
+                rows.push('</tbody></table>');
+                wrap.innerHTML = rows.join('');
+                // Attach row click
+                wrap.querySelectorAll('tr.clickable-row').forEach(tr => {
+                    tr.addEventListener('click', () => {
+                        const hole = parseInt(tr.getAttribute('data-hole'),10);
+                        this.goToHole(hole);
+                        this.hidePlayerOverview();
+                    });
+                });
+            }
+
+            abbrevMode(result, player) {
+                if (!result) return '';
+                const t = result.type;
+                if (t === 'lone-wolf') return 'Tee';
+                if (t === 'wolf-solo') return 'Fair';
+                if (t === 'wolf-partner') {
+                    const partner = result.partner;
+                    if (result.wolf === player || partner === player) return 'P✓';
+                    return 'P';
+                }
+                return '';
+            }
+
+            goToHole(target) {
+                if (target < 1 || target > this.totalHoles) return;
+                // Ensure wolf history filled up to target (generate using existing nextHole logic without scoring)
+                while (this.wolfHistory.length < target) {
+                    // Simulate wolf rotation without advancing scores
+                    if (this.rotationMode === 'rolling') {
+                        const lastWolfIdx = this.wolfHistory[this.wolfHistory.length - 1];
+                        const nextWolfIdx = (lastWolfIdx + 1) % this.players.length;
+                        this.wolfHistory.push(nextWolfIdx);
+                    } else {
+                        // random mode uses precomputed order
+                        if (this.wolfOrder.length === 0) { this.buildRandomWolfOrder(); }
+                        if (this.wolfHistory.length < this.wolfOrder.length) {
+                            this.wolfHistory.push(this.wolfOrder[this.wolfHistory.length]);
+                        } else {
+                            // rebuild if exhausted (shouldn't usually happen)
+                            this.buildRandomWolfOrder();
+                            this.wolfHistory.push(this.wolfOrder[this.wolfHistory.length]);
+                        }
+                    }
+                }
+                this.currentHole = target;
+                this.currentWolf = this.wolfHistory[target-1] || 0;
+                this.restoreCurrentHoleSelection();
+                this.showHoleScoring();
             }
                 restoreCurrentHoleSelection() {
                     const match = this.holeResults.find(hr => hr.hole === this.currentHole);
@@ -750,58 +939,75 @@
                 const wolfName = this.players[this.currentWolf];
                 const otherPlayers = this.players.filter((_, index) => index !== this.currentWolf);
 
+                const opponentsCount = otherPlayers.length;
+                                const compactBadge = (mode) => {
+                                        const fourP = this.players.length === 4;
+                                        // Always show Wolf side per-player win value (or Wolf team member) / Opponent side per-player win value.
+                                        if (mode === 'lone-wolf') {
+                                                return fourP
+                                                    ? '<span class="points-badge" title="Tee Wolf: Wolf wins 6; each opponent wins 2 if they beat Wolf">6P / 2P</span>'
+                                                    : '<span class="points-badge" title="Tee Wolf: Wolf wins 4; each opponent wins 2 if they beat Wolf">4P / 2P</span>';
+                                        }
+                                        if (mode === 'wolf-solo') {
+                                                return fourP
+                                                    ? '<span class="points-badge" title="Fairway Wolf: Wolf (or single opponent) wins 3; if field wins they get 1 each">3P / 1P</span>'
+                                                    : '<span class="points-badge" title="Fairway Wolf: Wolf (or single opponent) wins 2; field win 1 each">2P / 1P</span>';
+                                        }
+                                        if (mode === 'wolf-partner') {
+                                                return fourP
+                                                    ? '<span class="points-badge" title="Partner 4P: Wolf team member wins 1; opponent team member wins 1">1P / 1P</span>'
+                                                    : '<span class="points-badge" title="Partner 3P: Wolf team member wins 1; lone opponent wins 2">1P / 2P</span>';
+                                        }
+                                        return '';
+                                };
+
                 if (this.players.length === 3) {
-                    // 3 players: Put Super Wolf first, then Wolf Solo, then partner options
-                    const superWolfOption = document.createElement('div');
-                    superWolfOption.className = 'scoring-option';
-                    superWolfOption.dataset.mode = 'lone-wolf';
-                    superWolfOption.innerHTML = `<div class=\"option-title\">🔥 Super Wolf <span class=\"badge\" title=\"Double points\">×2</span></div>`;
-                    superWolfOption.onclick = () => this.selectScoringOption('lone-wolf');
-                    scoringOptions.appendChild(superWolfOption);
+                    // 3 players: Tee Wolf, Fairway Wolf, then partner options
+                        const superWolfOption = document.createElement('div');
+                        superWolfOption.className = 'scoring-option';
+                        superWolfOption.dataset.mode = 'lone-wolf';
+                        superWolfOption.innerHTML = `<div class=\"option-title\">🔥 Tee Wolf ${compactBadge('lone-wolf')}</div><div class=\"option-desc\">Declared on the tee before any shots. Wolf plays alone for ${this.players.length===4? '6':'4'} points.</div>`;
+                        superWolfOption.onclick = () => this.selectScoringOption('lone-wolf');
+                        scoringOptions.appendChild(superWolfOption);
 
                     const soloOption = document.createElement('div');
                     soloOption.className = 'scoring-option';
                     soloOption.dataset.mode = 'wolf-solo';
-                    soloOption.innerHTML = `<div class="option-title">🐺 Wolf</div>`;
+                        soloOption.innerHTML = `<div class=\"option-title\">🐺 Fairway Wolf ${compactBadge('wolf-solo')}</div><div class=\"option-desc\">Chosen after tee shots (before 2nd shots). Solo vs field for ${this.players.length===4? '3':'2'} points.</div>`;
                     soloOption.onclick = () => this.selectScoringOption('wolf-solo');
                     scoringOptions.appendChild(soloOption);
 
-                    // Partner options
                     otherPlayers.forEach(partner => {
                         const partnerOption = document.createElement('div');
                         partnerOption.className = 'scoring-option';
                         partnerOption.dataset.mode = 'wolf-partner';
                         partnerOption.dataset.partner = partner;
-                        partnerOption.innerHTML = `<div class="option-title">🤝 Wolf & ${partner}</div>`;
+                            partnerOption.innerHTML = `<div class=\"option-title\">🤝 Wolf & ${partner} ${compactBadge('wolf-partner')}</div><div class=\"option-desc\">Wolf picks partner after tee shots (3-player: 2v1). Team +1 each; lone opponent +2.</div>`;
                         partnerOption.onclick = () => this.selectScoringOption('wolf-partner', partner);
                         scoringOptions.appendChild(partnerOption);
                     });
                 } else {
-                    // 4 players: Wolf can go solo or choose a partner
-                    // Super Wolf option (replaces Lone Wolf)
+                    // 4 players
                     const superWolfOption = document.createElement('div');
                     superWolfOption.className = 'scoring-option';
                     superWolfOption.dataset.mode = 'lone-wolf';
-                    superWolfOption.innerHTML = `<div class=\"option-title\">🔥 Super Wolf <span class=\"badge\" title=\"Double points\">×2</span></div>`;
+                        superWolfOption.innerHTML = `<div class=\"option-title\">🔥 Tee Wolf ${compactBadge('lone-wolf')}</div><div class=\"option-desc\">Declared on the tee before any shots. Wolf plays alone for 6 points.</div>`;
                     superWolfOption.onclick = () => this.selectScoringOption('lone-wolf');
                     scoringOptions.appendChild(superWolfOption);
 
-                    // Standard Wolf (non-doubled) option
                     const soloOption = document.createElement('div');
                     soloOption.className = 'scoring-option';
                     soloOption.dataset.mode = 'wolf-solo';
-                    soloOption.innerHTML = `<div class="option-title">🐺 Wolf</div>`;
+                        soloOption.innerHTML = `<div class=\"option-title\">🐺 Fairway Wolf ${compactBadge('wolf-solo')}</div><div class=\"option-desc\">Chosen after tee shots (before 2nd shots). Solo vs field for 3 points.</div>`;
                     soloOption.onclick = () => this.selectScoringOption('wolf-solo');
                     scoringOptions.appendChild(soloOption);
 
-                    // Partner options
                     otherPlayers.forEach(partner => {
-                        const opponents = otherPlayers.filter(p => p !== partner);
                         const partnerOption = document.createElement('div');
                         partnerOption.className = 'scoring-option';
                         partnerOption.dataset.mode = 'wolf-partner';
                         partnerOption.dataset.partner = partner;
-                        partnerOption.innerHTML = `<div class="option-title">🤝 Wolf & ${partner}</div>`;
+                            partnerOption.innerHTML = `<div class=\"option-title\">🤝 Wolf & ${partner} ${compactBadge('wolf-partner')}</div><div class=\"option-desc\">Wolf picks partner after tee shots. Two vs Two. Winning team +1 each.</div>`;
                         partnerOption.onclick = () => this.selectScoringOption('wolf-partner', partner);
                         scoringOptions.appendChild(partnerOption);
                     });
@@ -849,34 +1055,39 @@
 
                 // Pot size is 1 point baseline for all modes now.
                 // Scoring rules (pot=1):
-                // wolf-partner: Wolf team win -> each 1. Solo opponent win -> 2. Opponent team win -> each 1.
-                // wolf-solo: Wolf vs field. Wolf win -> 2 (2× pot). Solo opponent win -> 2. Opponents team win -> each 1.
-                // lone-wolf: Lone Wolf vs field with doubled/doubled stakes: Wolf win -> 4 (4× pot). Solo opponent win -> 4. Opponents team win -> each 2 (2× pot).
+                // wolf-partner:
+                //    3 players (2v1): Wolf team win -> each 1. Lone opponent win -> 2.
+                //    4 players (2v2): Winning team -> each 1 (no lone opponent outcome).
+                // wolf-solo (Fairway Wolf):
+                //    3 players: Wolf win 2. Single opponent win 2. Opponent pair win 1 each.
+                //    4 players: Wolf win 3. Single opponent win 3. Opponent group (>=2) win 1 each.
+                // lone-wolf (Tee Wolf):
+                //    3 players: Wolf win 4. Single opponent win 4. Opponent pair win 2 each.
+                //    4 players: Wolf win 6. Single opponent win 6. Opponent group (>=2) win 2 each.
                 if (result.type === 'wolf-solo') {
+                    const fourP = this.players.length === 4;
+                    const wolfWin = fourP ? 3 : 2;
                     if (winners.includes(result.wolf)) {
-                        // Wolf solo wins: 2 points
-                        pointsAwarded[result.wolf] = 2;
+                        pointsAwarded[result.wolf] = wolfWin;
                     } else if (winners.length === 1 && result.opponents.includes(winners[0])) {
-                        // Single opponent beats wolf: 2 points
-                        pointsAwarded[winners[0]] = 2;
+                        // Single opponent beats wolf (mirrors wolf value)
+                        pointsAwarded[winners[0]] = wolfWin;
                     } else {
-                        // Opponents (team) win: each gets 1
-                        result.opponents.forEach(opponent => {
-                            pointsAwarded[opponent] = 1;
-                        });
+                        // Opponent group win -> 1 each
+                        result.opponents.forEach(o => pointsAwarded[o] = 1);
                     }
                 } else if (result.type === 'lone-wolf') {
+                    const fourP = this.players.length === 4;
+                    const wolfWin = fourP ? 6 : 4;
+                    const opponentTeamValue = fourP ? 2 : 2; // unchanged per-opponent baseline in both sizes
                     if (winners.includes(result.wolf)) {
-                        // Lone wolf wins: 4 points
-                        pointsAwarded[result.wolf] = 4;
+                        pointsAwarded[result.wolf] = wolfWin;
                     } else if (winners.length === 1 && result.opponents.includes(winners[0])) {
-                        // Single opponent beats lone wolf: 4 points
-                        pointsAwarded[winners[0]] = 4;
+                        // Single opponent beats wolf gets full wolf value
+                        pointsAwarded[winners[0]] = wolfWin;
                     } else {
-                        // Opponents (team) win: each gets 2
-                        result.opponents.forEach(opponent => {
-                            pointsAwarded[opponent] = 2;
-                        });
+                        // Opponent group win: each gets 2 (both 3p and 4p keep 2 each)
+                        result.opponents.forEach(o => pointsAwarded[o] = opponentTeamValue);
                     }
                 } else if (result.type === 'wolf-partner') {
                     const wolfTeam = [result.wolf, result.partner];
@@ -887,8 +1098,8 @@
                         wolfTeam.forEach(player => {
                             pointsAwarded[player] = 1;
                         });
-                    } else if (winners.length === 1 && opponentTeam.includes(winners[0])) {
-                        // Solo opponent beats Wolf+Partner: Solo gets 2× pot (pot=1, so 2)
+                    } else if (winners.length === 1 && opponentTeam.includes(winners[0]) && opponentTeam.length === 1) {
+                        // 3-player only: lone opponent beats Wolf+Partner gets 2 points
                         pointsAwarded[winners[0]] = 2;
                     } else {
                         // Opponent team wins: Each gets pot (pot=1)
@@ -1071,18 +1282,22 @@
                     if (!result || !winners) return;
                     let pts = {};
                     if (result.type === 'wolf-solo') {
+                        const fourP = this.players.length === 4;
+                        const wolfWin = fourP ? 3 : 2;
                         if (winners.includes(result.wolf)) {
-                            pts[result.wolf] = 2;
+                            pts[result.wolf] = wolfWin;
                         } else if (winners.length === 1 && result.opponents.includes(winners[0])) {
-                            pts[winners[0]] = 2;
+                            pts[winners[0]] = wolfWin;
                         } else if (winners.length > 1) {
                             result.opponents.forEach(o => pts[o] = 1);
                         }
                     } else if (result.type === 'lone-wolf') {
+                        const fourP = this.players.length === 4;
+                        const wolfWin = fourP ? 6 : 4;
                         if (winners.includes(result.wolf)) {
-                            pts[result.wolf] = 4;
+                            pts[result.wolf] = wolfWin;
                         } else if (winners.length === 1 && result.opponents.includes(winners[0])) {
-                            pts[winners[0]] = 4;
+                            pts[winners[0]] = wolfWin;
                         } else if (winners.length > 1) {
                             result.opponents.forEach(o => pts[o] = 2);
                         }
@@ -1091,7 +1306,8 @@
                         const opponentTeam = result.opponents;
                         if (winners.some(w => wolfTeam.includes(w))) {
                             wolfTeam.forEach(p => pts[p] = 1);
-                        } else if (winners.length === 1 && opponentTeam.includes(winners[0])) {
+                        } else if (winners.length === 1 && opponentTeam.includes(winners[0]) && opponentTeam.length === 1) {
+                            // 3-player only lone opponent outcome
                             pts[winners[0]] = 2;
                         } else if (winners.length > 1) {
                             opponentTeam.forEach(p => pts[p] = 1);
@@ -1104,8 +1320,8 @@
 
             describeMode(result){
                 if (!result) return '';
-                if (result.type === 'lone-wolf') return 'Super Wolf';
-                if (result.type === 'wolf-solo') return 'Wolf';
+                if (result.type === 'lone-wolf') return 'Tee Wolf';
+                if (result.type === 'wolf-solo') return 'Fairway Wolf';
                 if (result.type === 'wolf-partner') return `Wolf & ${result.partner}`;
                 return result.type;
             }
@@ -1196,12 +1412,44 @@
                     const playerDiv = document.createElement('div');
                     playerDiv.className = `final-player ${index === 0 ? 'winner' : ''}`;
                     const medal = medalMap[player] ? `<span class="medal">${medalMap[player]}</span>` : '';
+                    let moneySpan = '';
+                    if (this.bettingEnabled && this.amountPerPoint>0) {
+                        const moneyNet = this.computeMoneyNet();
+                        moneySpan = ` (€${this.formatMoney(moneyNet[player])})`;
+                    }
                     playerDiv.innerHTML = `
                         <div class="result-players">${medal}${player}</div>
-                        <div class="result-points">${score} points</div>
+                        <div class="result-points">${score} points${moneySpan}</div>
                     `;
                     finalScores.appendChild(playerDiv);
                 });
+                if (this.bettingEnabled && this.amountPerPoint>0) {
+                    const payoutHeader = document.createElement('div');
+                    payoutHeader.style.marginTop = '20px';
+                    payoutHeader.style.fontSize = '0.9rem';
+                    payoutHeader.style.fontWeight = '600';
+                    payoutHeader.style.letterSpacing = '.5px';
+                    payoutHeader.textContent = 'Payouts';
+                    finalScores.appendChild(payoutHeader);
+                    const settlements = this.computeSettlements();
+                    if (!settlements.length) {
+                        const clearDiv = document.createElement('div');
+                        clearDiv.style.fontSize = '.7rem';
+                        clearDiv.style.opacity = '.7';
+                        clearDiv.textContent = 'All square.';
+                        finalScores.appendChild(clearDiv);
+                    } else {
+                        settlements.forEach(s => {
+                            const row = document.createElement('div');
+                            row.style.fontSize = '.7rem';
+                            row.style.opacity = '.8';
+                            row.style.display='flex';
+                            row.style.justifyContent='space-between';
+                            row.innerHTML = `<span>${s.from} → ${s.to}</span><span>€${this.formatMoney(s.amount)}</span>`;
+                            finalScores.appendChild(row);
+                        });
+                    }
+                }
                 this.saveState();
             }
 
@@ -1263,7 +1511,9 @@
                     rotationMode: this.rotationMode,
                     wolfOrder: this.wolfOrder,
                     wolfPointer: this.wolfPointer,
-                    wolfHistory: this.wolfHistory
+                    wolfHistory: this.wolfHistory,
+                    bettingEnabled: this.bettingEnabled,
+                    amountPerPoint: this.amountPerPoint
                   };
                   localStorage.setItem('wolfGameState', JSON.stringify(state));
                 } catch(e){ console.warn('Failed to save state', e); }
@@ -1285,6 +1535,8 @@
                   this.wolfOrder = Array.isArray(data.wolfOrder) ? data.wolfOrder : [];
                   this.wolfPointer = typeof data.wolfPointer === 'number' ? data.wolfPointer : 0;
                   this.wolfHistory = Array.isArray(data.wolfHistory) && data.wolfHistory.length ? data.wolfHistory : (this.players.length ? [this.currentWolf] : []);
+                  this.bettingEnabled = !!data.bettingEnabled;
+                  this.amountPerPoint = parseFloat(data.amountPerPoint)||0;
                   this.currentHoleWinners = null;
                   if (this.players.length) {
                     this.updateScoreboard();
@@ -1314,6 +1566,58 @@
                 for (let i=order.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [order[i],order[j]]=[order[j],order[i]]; }
                 this.wolfOrder = order;
               }
+
+                            formatMoney(v){
+                                return v.toFixed(2).replace(/\.00$/,'');
+                            }
+
+                            computeMoneyNet(){
+                                // Skins-style payout: only the point DIFFERENCE (max positive point value above 0) creates a single pot for the hole.
+                                // That pot (maxPoints * stake) is split equally among all winners that achieved the max point value.
+                                // All losers split the payment equally (so total paid == total received == maxPoints * stake).
+                                // This prevents multi-player wins (e.g. partner team each +1) from doubling the money versus a solo win.
+                                const net = {};
+                                this.players.forEach(p=> net[p]=0);
+                                if (!this.bettingEnabled || this.amountPerPoint<=0) return net;
+                                const stake = this.amountPerPoint;
+                                this.holeResults.forEach(hr => {
+                                    if (!hr || !hr.pointsAwarded) return;
+                                    const pa = hr.pointsAwarded;
+                                    const pointValues = Object.values(pa);
+                                    if (!pointValues.length) return; // tie or unscored
+                                    const maxPts = Math.max(...pointValues);
+                                    if (maxPts <= 0) return; // no positive winner points (shouldn't happen)
+                                    // Winners are players with maxPts
+                                    const winners = Object.keys(pa).filter(p => pa[p] === maxPts);
+                                    const losers = this.players.filter(p => !winners.includes(p));
+                                    if (!losers.length) return; // everyone won? (edge case) -> skip money
+                                    const holePotMoney = maxPts * stake;
+                                    const winShare = holePotMoney / winners.length;
+                                    const loseShare = holePotMoney / losers.length;
+                                    winners.forEach(w => net[w] += winShare);
+                                    losers.forEach(l => net[l] -= loseShare);
+                                });
+                                return net;
+                            }
+
+                            computeSettlements(){
+                                // Convert per-player net balances (from skins-style pot calculation) into minimal settlement transfers.
+                                const net = this.computeMoneyNet();
+                                const creditors = Object.entries(net).filter(([,v])=> v>0).map(([p,v])=>({p,v})).sort((a,b)=> b.v - a.v);
+                                const debtors = Object.entries(net).filter(([,v])=> v<0).map(([p,v])=>({p,v:-v})).sort((a,b)=> b.v - a.v); // v positive as owed
+                                const res=[];
+                                let i=0,j=0;
+                                while(i<debtors.length && j<creditors.length){
+                                    const d = debtors[i];
+                                    const c = creditors[j];
+                                    const pay = Math.min(d.v, c.v);
+                                    if (pay > 0.0001) res.push({from:d.p, to:c.p, amount: pay});
+                                    d.v -= pay; c.v -= pay;
+                                    if (d.v <= 0.0001) i++;
+                                    if (c.v <= 0.0001) j++;
+                                }
+                                return res;
+                            }
         }
 
         // Global game instance
@@ -1322,7 +1626,7 @@
         // Global variable to track player count
         let playerCount = 3;
 
-        function setPlayerCount(count) {
+    function setPlayerCount(count) {
             const player3Btn = document.getElementById('player3Btn');
             const player4Btn = document.getElementById('player4Btn');
             const player4Group = document.getElementById('player4Group');
@@ -1339,6 +1643,10 @@
                 player3Btn.classList.remove('selected');
                 player4Btn.classList.add('selected');
                 player4Group.style.display = 'block';
+            }
+            // Re-run stake estimate with new player count if betting panel visible
+            if (typeof updateStakesEstimates === 'function') {
+                updateStakesEstimates();
             }
         }
 
@@ -1405,6 +1713,17 @@ document.addEventListener('DOMContentLoaded', function() {
   playerCount=3;
   setRotationMode('rolling');
   const restored = game.loadState();
+    // Restore betting UI if state had it
+    if (game.bettingEnabled) {
+        const betChk = document.getElementById('bettingEnabled');
+        const amtInput = document.getElementById('amountPerPoint');
+        const row = document.getElementById('stakesAmountRow');
+    const est = document.getElementById('stakesEstimatorRow');
+        if (betChk) betChk.checked = true;
+        if (amtInput) { amtInput.disabled = false; amtInput.value = game.amountPerPoint || ''; }
+        if (row) row.style.display='flex';
+    if (est) { est.style.display='flex'; setTimeout(updateStakesEstimates,0); }
+    }
   if (restored && game.players.length === 4) {
     playerCount=4;
     document.getElementById('player4Group').style.display='block';
@@ -1445,6 +1764,94 @@ function showModeSelection(){
     // Keep winners visible; just unhide mode to allow re-select
 }
 window.showModeSelection = showModeSelection;
+
+function toggleBettingInputs(){
+    const betChk = document.getElementById('bettingEnabled');
+    const amt = document.getElementById('amountPerPoint');
+    const row = document.getElementById('stakesAmountRow');
+    const est = document.getElementById('stakesEstimatorRow');
+    if (!betChk || !amt) return;
+    if (betChk.checked){ 
+        amt.disabled = false; 
+        if(row) row.style.display='flex'; 
+        if(est) est.style.display='flex';
+        amt.focus(); 
+        updateStakesEstimates();
+    }
+    else { 
+        amt.disabled = true; 
+        if(row) row.style.display='none'; 
+        if(est) est.style.display='none';
+    }
+}
+window.toggleBettingInputs = toggleBettingInputs;
+
+// Estimate worst-case max loss based on stake, players, and Tee Wolf frequency slider.
+// Heuristic model: expected total points ~ basePoints + superWolfBoost.
+// Updated for Option 2 (4P Tee 6 / Fairway 3):
+// BasePoints (no Tee Wolf) ≈ typical distribution using only Fairway + Partner: 3P ~38, 4P ~50 (slightly higher due to extra 1-point Fairway wins).
+// Normal non-Tee hole average total points now ~2.6 (4P) / ~2.3 (3P). Tee Wolf hole totals range 6 + (2 * losers share) ≈ 6 + (2 * avgOppShare) ~ 10–12 raw points spread; effective added total vs normal ≈ 3.0 (3P) to 3.2 (4P) after averaging outcomes.
+// We'll approximate incremental per Tee Wolf hole delta at 3.1 (4P) / 2.8 (3P).
+// Slider % -> assumed count: freq% * 18 * 0.55 (Tee declarations not every hole; 0.55 tuned for new higher incentive).
+// Individual max loss heuristic baseline share: (totalPoints * 0.52 / players) * stake (slightly higher 0.52 to reflect heavier tails).
+// Volatility amplification widened to (0.85 .. 1.5) scaled by frequency and player count dispersion.
+function estimateMaxLoss(playersCount, stake, superFreqPct){
+    if (playersCount < 3 || stake <= 0) return 0;
+    const holes = 18;
+    const basePoints = playersCount === 3 ? 38 : 50; // slight bump for Fairway 3P vs 4P distribution
+    const freq = superFreqPct / 100;
+    const potentialTee = holes * 0.55; // tuned for new incentive frequency
+    const teeCount = potentialTee * freq;
+    const perHoleDelta = playersCount === 4 ? 3.1 : 2.8;
+    const addedPoints = teeCount * perHoleDelta;
+    const totalPoints = basePoints + addedPoints;
+    // Worst-case cluster share estimate
+    const baselineSpan = (totalPoints * 0.52 / playersCount);
+    const swingMultiplier = playersCount === 4 ? 1.30 : 1.05; // slightly higher spread now with 6-point ceiling
+    const volatility = (0.85 + freq * 0.65) * swingMultiplier; // expands top end to ~1.5
+    return baselineSpan * volatility * stake;
+}
+
+function updateStakesEstimates(){
+    const stakeInput = document.getElementById('amountPerPoint');
+    const freqSlider = document.getElementById('teeWolfFreq');
+    const freqLabel = document.getElementById('teeWolfFreqLabel');
+    const out = document.getElementById('estimatedMaxLoss');
+    const note = document.getElementById('estimateContextNote');
+    if (!stakeInput || !freqSlider || !out) return;
+    const stake = parseFloat(stakeInput.value)||0;
+    const freq = parseInt(freqSlider.value,10)||0;
+    if (freqLabel) freqLabel.textContent = freq + '%';
+    const playersCount = (game && game.players && game.players.length) ? game.players.length : playerCount;
+    const est = estimateMaxLoss(playersCount, stake, freq);
+    if (stake > 0) {
+        out.textContent = `Estimated max loss: €${est.toFixed(2).replace(/\.00$/,'')}`;
+    } else {
+        out.textContent = 'Estimated max loss: —';
+    }
+    if (note) {
+        note.textContent = playersCount === 4
+            ? '4P scaling active: Tee Wolf 6 / 2 each loss, Fairway 3 / 1 each.'
+            : '3P scaling active: Tee Wolf 4 / 2 each loss, Fairway 2 / 1 each.';
+    }
+}
+window.updateStakesEstimates = updateStakesEstimates;
+
+function updateStakeSliderDisplay(){
+    const slider = document.getElementById('amountPerPoint');
+    const val = document.getElementById('amountPerPointValue');
+    if (!slider || !val) return;
+    const v = parseFloat(slider.value)||0;
+    val.textContent = '€' + (v >= 1 ? v.toFixed(1).replace(/\.0$/,'') : v.toFixed(2));
+}
+window.updateStakeSliderDisplay = updateStakeSliderDisplay;
+
+// React to stake amount changes
+document.addEventListener('input', (e)=>{
+    if (e.target && (e.target.id === 'amountPerPoint')) {
+        updateStakesEstimates();
+    }
+});
 
 function backToLastHole(){
     if (!game.players.length) return;

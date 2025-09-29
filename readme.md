@@ -7,31 +7,43 @@ A lightweight single‑page web app for scoring casual "Wolf" golf games (3–4 
 ## Core Concepts (Wolf Variant Used Here)
 Wolf is a hole‑by‑hole points game. Each hole has a designated Wolf. The Wolf chooses (explicitly here by selecting a mode) to:
 
-1. 🔥 Super Wolf (formerly "Lone Wolf"): Go fully alone at double stakes.
-2. 🐺 Wolf (standard solo): Go alone at normal stakes.
+1. 🔥 Tee Wolf (formerly "Super/Lone Wolf"): Declared on the tee; highest risk/reward.
+2. 🐺 Fairway Wolf (standard solo): Declared after tee shots (before second shots).
 3. 🤝 Wolf & Partner: Team up with a single partner against the remaining players.
 
 The app normalizes the pot baseline to 1 point. All payouts are expressed relative to that fixed pot.
 
 ### Scoring Table (Pot = 1)
-| Mode | Situation | Points Awarded |
-|------|-----------|----------------|
-| Super Wolf | Wolf beats field | Wolf +4 |
-| Super Wolf | Single opponent beats Wolf | That opponent +4 |
-| Super Wolf | Opponent team beats Wolf | Each opponent +2 |
-| Wolf (solo) | Wolf beats field | Wolf +2 |
-| Wolf (solo) | Single opponent beats Wolf | That opponent +2 |
-| Wolf (solo) | Opponent team beats Wolf | Each opponent +1 |
-| Wolf & Partner | Wolf team wins | Wolf +1, Partner +1 |
-| Wolf & Partner | Single opponent beats team | That opponent +2 |
-| Wolf & Partner | Opponent team beats Wolf team | Each opponent +1 |
+3 Players (2 opponents when Wolf goes solo):
+| Mode | Situation | Points |
+|------|-----------|--------|
+| Tee Wolf | Wolf beats field | Wolf +4 |
+| Tee Wolf | Single opponent beats Wolf | That opponent +4 |
+| Tee Wolf | Opponent pair beats Wolf | Each opponent +2 |
+| Fairway Wolf | Wolf beats field | Wolf +2 |
+| Fairway Wolf | Single opponent beats Wolf | That opponent +2 |
+| Fairway Wolf | Opponent pair beats Wolf | Each opponent +1 |
+| Wolf & Partner (3P 2v1) | Wolf team wins | Wolf +1, Partner +1 |
+| Wolf & Partner (3P 2v1) | Lone opponent beats team | Lone opponent +2 |
+|  |  |  |
+
+4 Players (3 opponents when Wolf goes solo):
+| Mode | Situation | Points |
+|------|-----------|--------|
+| Tee Wolf | Wolf beats field | Wolf +6 |
+| Tee Wolf | Single opponent beats Wolf | That opponent +6 |
+| Tee Wolf | Opponent group (2–3 players) beats Wolf | Each opponent +2 |
+| Fairway Wolf | Wolf beats field | Wolf +3 |
+| Fairway Wolf | Single opponent beats Wolf | That opponent +3 |
+| Fairway Wolf | Opponent group (2–3 players) beats Wolf | Each opponent +1 |
+| Wolf & Partner (4P 2v2) | Winning team | Each team member +1 |
 | Any Mode | Tie (declared) | No points |
 
 Ties (pushes) give zero to everyone and the hole is just inert in totals.
 
 ### 3 vs 4 Player Differences
-- 3 Players: Partner mode forms a 2 vs 1. Solo modes pit 1 vs 2.
-- 4 Players: Partner mode forms 2 vs 2. Solo modes pit 1 vs 3.
+- 3 Players: Partner mode forms a 2 vs 1. Tee Wolf = 4 / 2 each; Fairway Wolf = 2 / 1 each.
+- 4 Players: Partner mode forms 2 vs 2 (no lone opponent outcome). Tee Wolf = 6 / 2 each; Fairway Wolf = 3 / 1 each.
 
 ## Wolf Rotation
 Two rotation strategies:
@@ -43,7 +55,7 @@ Two rotation strategies:
 ## Features
 - Instant scoreboard (always visible after start) with live point totals & Wolf counts.
 - Tie‑aware medal emojis (🥇 🥈 🥉) appear only after the first points are earned; tied players share the same medal.
-- Mode selection panel (Super Wolf / Wolf / Partner) with contextual opponent & partner labeling.
+- Mode selection panel (Tee Wolf / Fairway Wolf / Partner) with contextual opponent & partner labeling.
 - Winner selection dynamically adapts to selected mode.
 - Full editability: Jump back to any scored hole, change mode or winners, and the app recalculates all downstream totals deterministically.
 - Overview panel (📊): Hole matrix with per‑hole mode, Wolf, winners, and per‑hole point deltas. Tap a row to jump & edit.
@@ -112,4 +124,4 @@ Open the file, hack, refresh. If adding behavior that changes scoring, ensure `r
 ## Disclaimer
 Rule sets for "Wolf" vary by group. This implementation reflects one consistent, explicitly documented variant. Adjust point values or add modes as needed.
 
-Enjoy the round and may your Super Wolf calls pay off.
+Enjoy the round and may your Tee Wolf calls pay off.
