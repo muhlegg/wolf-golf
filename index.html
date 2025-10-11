@@ -675,6 +675,8 @@
                 if (this.players.length === 0) { 
                     scoreboard.classList.add('hidden');
                 } else {
+                    // Refresh betting configuration from UI elements in case they changed
+                    this.refreshBettingConfig();
                     let moneyNet = null;
                     if (this.bettingEnabled && this.amountPerPoint > 0) {
                         moneyNet = this.computeMoneyNet();
@@ -756,6 +758,14 @@
                         }
                     });
                 }
+            }
+
+            refreshBettingConfig() {
+                // Update betting configuration from current UI state
+                const betChk = document.getElementById('bettingEnabled');
+                const amtInput = document.getElementById('amountPerPoint');
+                if (betChk) this.bettingEnabled = betChk.checked; else this.bettingEnabled = false;
+                if (this.bettingEnabled && amtInput) this.amountPerPoint = parseFloat(amtInput.value)||0; else this.amountPerPoint = 0;
             }
 
             /* Player Overview Feature */
@@ -1166,7 +1176,11 @@
                     this.updateNavigationButtons();
                     this.showHoleScoring();
                 } else {
-                    this.showGameSummary();
+                    // Check if we're at hole 18 and all holes are completed
+                    const allHolesCompleted = this.holeResults.length >= this.totalHoles;
+                    if (allHolesCompleted) {
+                        this.showGameSummary();
+                    }
                 }
                 this.saveState();
             }
@@ -1188,7 +1202,7 @@
                     this.currentHoleResult = null;
                     this.currentHoleWinners = null;
                     this.updateNavigationButtons();
-                    this.showHoleScoring();
+                    this.showHoleScoring(); // This already calls updateScoreboard() which includes money calculations
                 }
                 this.saveState();
             }
@@ -1200,8 +1214,15 @@
                 // Update previous button
                 prevBtn.disabled = this.currentHole <= 1;
                 
-                // Update next button
-                nextBtn.disabled = this.currentHole >= this.totalHoles;
+                // Update next button - allow going to summary from hole 18 if all holes are completed
+                const allHolesCompleted = this.holeResults.length >= this.totalHoles;
+                if (this.currentHole >= this.totalHoles && allHolesCompleted) {
+                    nextBtn.disabled = false;
+                    nextBtn.textContent = 'Summary →';
+                } else {
+                    nextBtn.disabled = this.currentHole >= this.totalHoles;
+                    nextBtn.textContent = 'Next →';
+                }
             }
 
             showWinnerSelection(editing = false) {
@@ -1331,6 +1352,8 @@
                     Object.keys(pts).forEach(p => rebuilt[p] += pts[p]);
                 });
                 this.scores = rebuilt;
+                // Update scoreboard with new money calculations when scores are recalculated
+                this.updateScoreboard();
             }
 
             describeMode(result){
